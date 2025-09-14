@@ -11,7 +11,7 @@ const asyncHandler = fn => (req, res, next) => {
 };
 
 const app = express();
-const port = 3000;
+const port = process.env.PORT || 3000;
 
 // Middleware
 app.use(express.json());
@@ -97,9 +97,10 @@ app.post('/api/generate-prompt', asyncHandler(async (req, res) => {
 // API endpoint to generate a story
 app.post('/api/generate-story', asyncHandler(async (req, res) => {
     console.log('Received generate-story request:', JSON.stringify(req.body, null, 2));
-    const { topicId, entityIds, category = 'normal', age } = req.body;
+    const { userPrompt, topicId, entityIds, category = 'normal', age } = req.body;
     
     const result = await storyGenerator.handleGenerateStory({
+        userPrompt,
         topicId,
         entityIds,
         category,

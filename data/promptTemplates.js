@@ -100,8 +100,6 @@ Aerial Combat Focus:
    - Keep the action clear and easy to follow
 
 6. Technical Details:
-   - Target length: 800-1200 words
-   - Keep language accessible for all ages
    - Include 2-3 key battle moments
    - Show the unique personalities of each Pokémon
 

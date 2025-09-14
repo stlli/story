@@ -79,24 +79,24 @@ class StoryGenerator {
         return this.ALL_ENTITIES[categoryType] || [];
     }
     
-    handleGeneratePrompt({ prompt, age, topicId, entityIds, category = 'normal' }) {
+    handleGeneratePrompt({ userPrompt, age, topicId, entityIds, category = 'normal' }) {
         const categories = this.ALL_CATEGORIES[category] || [];
         const allEntities = this.ALL_ENTITIES[category] || [];
         
-        // Flatten topics to find the selected one
-        const allTopics = categories.flatMap(cat => cat.subtopics);
+        let topic = null;
         
-        // Try to find topic by full ID first, then by ID suffix if not found
-        let topic = allTopics.find(t => t.id === topicId);
-        
-        // If not found by full ID, try to match by the end of the ID
-        if (!topic) {
-            topic = allTopics.find(t => t.id.endsWith(topicId) || topicId.endsWith(t.id));
-        }
-        
-        if (!topic) {
-            console.error('Topic not found. Available topics:', allTopics.map(t => t.id));
-            throw new Error('Invalid topic selected');
+        // If topicId is provided, try to find the topic
+        if (topicId) {
+            // Flatten topics to find the selected one
+            const allTopics = categories.flatMap(cat => cat.subtopics);
+            
+            // Try to find topic by full ID first, then by ID suffix if not found
+            topic = allTopics.find(t => t.id === topicId) ||
+                   allTopics.find(t => t.id.endsWith(topicId) || topicId.endsWith(t.id));
+            
+            if (!topic) {
+                console.warn(`Topic with ID '${topicId}' not found.`);
+            }
         }
         
         // Find selected entities
@@ -112,20 +112,48 @@ class StoryGenerator {
         let storyPrompt;
         const { CATEGORY } = require('./enum');
         const characterDescriptions = selectedEntities.map(entity => 
-            `${entity.character.name} (${entity.character.role}): ${entity.character.background?.origin_story}`
+            `${entity.character.name} (${entity.character.role}): ${entity.character.background?.origin_story || ''}`
         ).join('\n- ');
         
-        storyPrompt = generatePokemonFlightStory(
-            `${topic.category}: ${topic.name}`,
+        // Create the prompt based on what's available
+        let storyContext = '';
+        
+        if (topic && userPrompt) {
+            // Both topic and user prompt are provided - combine them
+            storyContext = `${topic?.category || category}: ${topic.name} and ${userPrompt}`;
+        } else if (topic) {
+            // Only topic is provided
+            storyContext = `${topic?.category || category}: ${topic.name}`;
+        } else if (userPrompt) {
+            // Only user prompt is provided
+            storyContext = userPrompt;
+        } else {
+            // Neither is provided - use a default
+            storyContext = 'Creative Story';
+        }
+
+        if (category === CATEGORY.POKEMON) {
+            storyPrompt = generatePokemonFlightStory(
+            storyContext,
             characterDescriptions,
-            topic.name,
+            storyContext,
             age || DEFAULT_AGE,
-            MIN_PROMPT_LENGTH,
-            MAX_PROMPT_LENGTH
+            MIN_PROMPT_LENGTH + 200,
+            MAX_PROMPT_LENGTH + 200
         );
+        } else {
+            storyPrompt = generateStoryPrompt(
+                storyContext,
+                characterDescriptions,
+                storyContext,
+                age || DEFAULT_AGE,
+                MIN_PROMPT_LENGTH,
+                MAX_PROMPT_LENGTH
+            );
+        }
         
         return {
-            story: `This is a generated ${category} story based on the topic "${topic.name}" and characters: ${selectedEntities.map(e => e.character.name).join(', ')}.\n\n${storyPrompt}`,
+            story: `This is a generated ${category} story based on the topic "${storyPrompt}" and characters: ${selectedEntities.map(e => e.character.name).join(', ')}.`,
             prompt: storyPrompt,
             category,
             topic,
@@ -133,9 +161,10 @@ class StoryGenerator {
         };
     }
     
-    async handleGenerateStory({ topicId, entityIds, category = 'normal', age = 8 }) {
+    async handleGenerateStory({ userPrompt, topicId, entityIds, category = 'normal', age = 8 }) {
         // Reuse the handleGeneratePrompt logic since it's very similar
         const result = this.handleGeneratePrompt({
+            userPrompt,
             topicId,
             entityIds,
             category,

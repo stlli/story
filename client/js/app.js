@@ -239,8 +239,11 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Generate story
     async function generateStory() {
-        if (!selectedTopic) {
-            alert('Please select a topic first!');
+        const userPrompt = promptInput?.value?.trim() || '';
+        
+        // Require either a topic or a user prompt, but not necessarily both
+        if (!selectedTopic && !userPrompt) {
+            alert('Please either select a topic or enter a story idea!');
             return;
         }
 
@@ -264,9 +267,9 @@ document.addEventListener('DOMContentLoaded', function() {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({ 
-                    userPrompt: promptInput?.value || '',
+                    userPrompt: userPrompt,
                     age: age,
-                    topicId: selectedTopic,
+                    topicId: selectedTopic || undefined, // Send undefined if no topic is selected
                     entityIds: selectedEntities,
                     category: currentCategory
                 })
