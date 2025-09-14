@@ -85,9 +85,17 @@ class StoryGenerator {
         
         // Flatten topics to find the selected one
         const allTopics = categories.flatMap(cat => cat.subtopics);
-        const topic = allTopics.find(t => t.id === topicId);
+        
+        // Try to find topic by full ID first, then by ID suffix if not found
+        let topic = allTopics.find(t => t.id === topicId);
+        
+        // If not found by full ID, try to match by the end of the ID
+        if (!topic) {
+            topic = allTopics.find(t => t.id.endsWith(topicId) || topicId.endsWith(t.id));
+        }
         
         if (!topic) {
+            console.error('Topic not found. Available topics:', allTopics.map(t => t.id));
             throw new Error('Invalid topic selected');
         }
         

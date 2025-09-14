@@ -77,8 +77,11 @@ document.addEventListener('DOMContentLoaded', function() {
                     </h3>
                 </div>
                 <div class="selection-grid" style="display: ${isExpanded ? 'grid' : 'none'}; margin-top: 1rem;">
-                    ${(category.subtopics || []).map(topic => `
-                        <div class="entity-card" data-topic-id="${category.id}-${topic.id}" style="cursor: pointer;">
+                    ${(category.subtopics || []).map(topic => {
+                        const fullTopicId = `${category.id}-${topic.id}`;
+                        const isSelected = selectedTopic === fullTopicId;
+                        return `
+                        <div class="topic-card entity-card ${isSelected ? 'selected' : ''}" data-topic-id="${topic.id}" style="cursor: pointer;">
                             <div class="entity-avatar" style="background-color: #e3f2fd; color: #1976d2; font-size: 2rem;">
                                 ${topic.name.charAt(0).toUpperCase()}
                             </div>
@@ -86,8 +89,8 @@ document.addEventListener('DOMContentLoaded', function() {
                                 <div class="entity-name">${topic.name}</div>
                                 <div class="entity-role">${topic.aspects ? topic.aspects[0] : ''}</div>
                             </div>
-                        </div>
-                    `).join('')}
+                        </div>`;
+                    }).join('')}
                 </div>`;
             
             // Add click handler for category header
@@ -103,7 +106,18 @@ document.addEventListener('DOMContentLoaded', function() {
                 card.addEventListener('click', (e) => {
                     e.stopPropagation();
                     const topicId = card.getAttribute('data-topic-id');
-                    selectTopic(topicId);
+                    const fullTopicId = `${category.id}-${topicId}`;
+                    
+                    // Toggle selection
+                    if (selectedTopic === fullTopicId) {
+                        selectedTopic = null;
+                        card.classList.remove('selected');
+                    } else {
+                        // Remove selected class from all other topic cards
+                        document.querySelectorAll('.topic-card').forEach(c => c.classList.remove('selected'));
+                        selectedTopic = fullTopicId;
+                        card.classList.add('selected');
+                    }
                 });
             });
             
@@ -168,36 +182,35 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Handle topic selection
     function selectTopic(topicId) {
-        // If topicId doesn't contain a dash, it's just the topic ID without category
-        // In that case, we need to find the full ID using the current category
-        let fullTopicId = topicId;
-        if (!topicId.includes('-') && categories.length > 0) {
-            const currentCategory = categories.find(cat => cat.id === expandedCategory);
-            if (currentCategory) {
-                fullTopicId = `${currentCategory.id}-${topicId}`;
-                console.log('Generated full topic ID:', fullTopicId);
-            }
-        }
+        // Toggle selection if clicking the same topic
+        const cardFullId = topicId.includes('-') ? topicId : `${expandedCategory}-${topicId}`;
+        const isAlreadySelected = selectedTopic === cardFullId;
         
-        selectedTopic = fullTopicId;
+        // Update selected topic (toggle if clicking the same one)
+        selectedTopic = isAlreadySelected ? null : cardFullId;
         
         // Update UI to show selected topic
         document.querySelectorAll('.topic-card').forEach(card => {
-            const cardTopicId = card.dataset.topicId;
-            const cardCategoryId = card.closest('.category-card')?.dataset.categoryId;
-            const cardFullId = cardCategoryId ? `${cardCategoryId}-${cardTopicId}` : cardTopicId;
+            const cardTopicId = card.getAttribute('data-topic-id');
+            const cardCategoryId = card.closest('.category-card')?.dataset?.categoryId || expandedCategory;
+            const currentCardFullId = `${cardCategoryId}-${cardTopicId}`;
             
-            if (cardFullId === fullTopicId) {
-                card.classList.add('selected');
-                if (cardCategoryId) {
-                    expandedCategory = cardCategoryId;
+            if (currentCardFullId === cardFullId) {
+                if (isAlreadySelected) {
+                    card.classList.remove('selected');
+                } else {
+                    card.classList.add('selected');
+                    // Ensure the category is expanded
+                    if (cardCategoryId && cardCategoryId !== expandedCategory) {
+                        expandedCategory = cardCategoryId;
+                        renderCategories();
+                        return; // Exit early to prevent multiple renders
+                    }
                 }
             } else {
                 card.classList.remove('selected');
             }
         });
-        
-        renderCategories();
     }
     
     // Toggle entity selection
@@ -244,13 +257,14 @@ document.addEventListener('DOMContentLoaded', function() {
             const ageInput = document.getElementById('age-input');
             const age = parseInt(ageInput.value) || 8; // Default to 8 if not set
             
+            // Use the full selectedTopic as the topicId
             const response = await fetch('/api/generate-story', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({ 
-                    prompt: promptInput?.value || '',
+                    userPrompt: promptInput?.value || '',
                     age: age,
                     topicId: selectedTopic,
                     entityIds: selectedEntities,
