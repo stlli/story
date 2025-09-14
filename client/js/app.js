@@ -68,28 +68,27 @@ document.addEventListener('DOMContentLoaded', function() {
         categories.forEach(category => {
             const categoryElement = document.createElement('div');
             const isExpanded = expandedCategory === category.id;
-            const topicsList = category.subtopics.map(topic => {
-                const fullTopicId = `${category.id}-${topic.id}`;
-                const isSelected = selectedTopic === fullTopicId || selectedTopic === topic.id;
-                return `
-                    <div class="topic-card ${isSelected ? 'selected' : ''}" 
-                         data-topic-id="${topic.id}">
-                        <h4>${topic.name}</h4>
-                        <p class="topic-aspect">${topic.aspects[0]}</p>
-                    </div>
-                `;
-            }).join('');
             
-            categoryElement.className = 'category-card';
             categoryElement.innerHTML = `
-                <div class="category-header" data-category-id="${category.id}">
-                    <h3>${category.name}</h3>
-                    <span class="toggle-icon">${isExpanded ? '−' : '+'}</span>
+                <div class="category-header" style="margin: 1rem 0; padding: 0.5rem 0; border-bottom: 1px solid #eee; cursor: pointer;" onclick="event.stopPropagation(); toggleCategory('${category.id}')">
+                    <h3 style="margin: 0; display: flex; justify-content: space-between; align-items: center;">
+                        ${category.name}
+                        <span style="font-size: 1.2rem;">${isExpanded ? '−' : '+'}</span>
+                    </h3>
                 </div>
-                <div class="topics-container" style="display: ${isExpanded ? 'grid' : 'none'}">
-                    ${topicsList}
-                </div>
-            `;
+                <div class="selection-grid" style="display: ${isExpanded ? 'grid' : 'none'}; margin-top: 1rem;">
+                    ${(category.subtopics || []).map(topic => `
+                        <div class="entity-card" data-topic-id="${category.id}-${topic.id}" style="cursor: pointer;">
+                            <div class="entity-avatar" style="background-color: #e3f2fd; color: #1976d2; font-size: 2rem;">
+                                ${topic.name.charAt(0).toUpperCase()}
+                            </div>
+                            <div class="entity-info">
+                                <div class="entity-name">${topic.name}</div>
+                                <div class="entity-role">${topic.aspects ? topic.aspects[0] : ''}</div>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>`;
             
             // Add click handler for category header
             const header = categoryElement.querySelector('.category-header');
@@ -128,18 +127,40 @@ document.addEventListener('DOMContentLoaded', function() {
             entityElement.className = `entity-card ${isSelected ? 'selected' : ''}`;
             
             // Check if the entity has an image path
-            const imagePath = entity.character.image || '';
+            let imagePath = entity.character.image || '';
             const hasImage = imagePath && !imagePath.endsWith('.svg'); // Skip SVG placeholders
             
-            entityElement.innerHTML = `
-                <div class="entity-avatar" ${hasImage ? `style="background-image: url('${imagePath}')"` : ''}>
-                    ${hasImage ? '' : entity.character.name.charAt(0)}
-                </div>
-                <div class="entity-info">
-                    <div class="entity-name">${entity.character.name}</div>
-                    <div class="entity-role">${entity.character.role}</div>
-                </div>
-            `;
+            // Get the first letter for the avatar fallback
+            const firstLetter = entity.character.name.charAt(0).toUpperCase();
+            
+            // Get the species if available, otherwise use role
+            const subtitle = entity.character.species || entity.character.role || '';
+            
+            // Set background image if available
+            if (hasImage) {
+                entityElement.style.backgroundImage = `url('${imagePath}')`;
+                entityElement.style.backgroundSize = 'cover';
+                entityElement.style.backgroundPosition = 'center';
+                entityElement.style.color = 'white';
+                entityElement.style.textShadow = '0 1px 3px rgba(0,0,0,0.8)';
+                
+                entityElement.innerHTML = `
+                    <div class="entity-info" style="background: rgba(0,0,0,0.6); width: 100%; border-radius: 8px;">
+                        <div class="entity-name" style="font-weight: 700;">${entity.character.name}</div>
+                        <div class="entity-role" style="font-size: 0.85rem; opacity: 0.9;">${subtitle}</div>
+                    </div>
+                `;
+            } else {
+                entityElement.innerHTML = `
+                    <div class="entity-avatar">
+                        ${firstLetter}
+                    </div>
+                    <div class="entity-info">
+                        <div class="entity-name">${entity.character.name}</div>
+                        <div class="entity-role">${subtitle}</div>
+                    </div>
+                `;
+            }
             entityElement.addEventListener('click', () => toggleEntity(entity.id));
             entitySelection.appendChild(entityElement);
         });
