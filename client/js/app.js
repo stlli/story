@@ -5,6 +5,124 @@ document.addEventListener('DOMContentLoaded', function() {
     const topicSelection = document.getElementById('topic-selection');
     const entitySelection = document.getElementById('entity-selection');
     const storyCategorySelect = document.getElementById('story-category');
+    const speechBtn = document.getElementById('speech-btn');
+    const speechStatus = document.getElementById('speech-status');
+    
+    // Check if the browser supports the Web Speech API
+    const isSpeechRecognitionSupported = 'webkitSpeechRecognition' in window || 'SpeechRecognition' in window;
+    let recognition = null;
+    
+    if (isSpeechRecognitionSupported) {
+        // Initialize speech recognition
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        recognition = new SpeechRecognition();
+        recognition.continuous = false;
+        recognition.interimResults = false;
+        recognition.lang = 'en-US';
+        
+        // Handle speech recognition results
+        recognition.onresult = (event) => {
+            try {
+                const transcript = event.results[0][0].transcript;
+                promptInput.value = transcript;
+                speechStatus.textContent = 'Voice input received';
+                setTimeout(() => {
+                    if (speechStatus.textContent === 'Voice input received') {
+                        speechStatus.textContent = '';
+                    }
+                }, 3000);
+            } catch (error) {
+                console.error('Error processing speech result:', error);
+                speechStatus.textContent = 'Error processing voice input. Please try again.';
+            }
+        };
+        
+        recognition.onerror = (event) => {
+            console.error('Speech recognition error:', event);
+            handleRecognitionError(event.error || event.message);
+        };
+        
+        recognition.onaudiostart = () => {
+            speechStatus.textContent = 'Listening... Speak now!';
+        };
+        
+        recognition.onsoundstart = () => {
+            // Sound detected, user is speaking
+        };
+        
+        recognition.onsoundend = () => {
+            // Sound stopped, but recognition might still be processing
+            speechStatus.textContent = 'Processing your voice...';
+        };
+        
+        recognition.onend = () => {
+            if (!speechBtn.classList.contains('listening')) return;
+            
+            speechBtn.classList.remove('listening');
+            if (speechStatus.textContent === 'Listening... Speak now!') {
+                speechStatus.textContent = 'No speech detected. Please try again.';
+            }
+        };
+        
+        // Add click event listener to the speech button
+        speechBtn.addEventListener('click', toggleSpeechRecognition);
+    } else {
+        // Hide the speech button if not supported
+        speechBtn.style.display = 'none';
+    }
+    
+    // Toggle speech recognition on/off
+    function toggleSpeechRecognition() {
+        if (!recognition) return;
+        
+        if (speechBtn.classList.contains('listening')) {
+            recognition.stop();
+            speechBtn.classList.remove('listening');
+            speechStatus.textContent = 'Voice input stopped';
+            return;
+        }
+        
+        // Request microphone permission first
+        navigator.mediaDevices.getUserMedia({ audio: true })
+            .then(stream => {
+                // Stop any existing tracks to release the microphone
+                stream.getTracks().forEach(track => track.stop());
+                
+                try {
+                    recognition.start();
+                    speechBtn.classList.add('listening');
+                    speechStatus.textContent = 'Listening... Speak now!';
+                } catch (error) {
+                    console.error('Error starting speech recognition:', error);
+                    handleRecognitionError(error);
+                }
+            })
+            .catch(error => {
+                console.error('Microphone access denied:', error);
+                speechStatus.innerHTML = `
+                    Microphone access is required for voice input. 
+                    <br>Please enable microphone permissions in your browser settings.
+                    <br><a href="https://support.google.com/chrome/answer/2693767" target="_blank" style="color: #3498db; text-decoration: underline;">
+                        How to enable microphone access
+                    </a>
+                `;
+            });
+    }
+    
+    function handleRecognitionError(error) {
+        let errorMessage = 'Error: Could not start voice input';
+        
+        if (error === 'not-allowed' || error.name === 'NotAllowedError') {
+            errorMessage = 'Microphone access was denied. Please allow microphone access in your browser settings.';
+        } else if (error === 'service-not-allowed' || error.name === 'ServiceNotAllowedError') {
+            errorMessage = 'Microphone access is not allowed. Please check your browser settings.';
+        } else if (error === 'no-speech' || error.name === 'NoSpeechError') {
+            errorMessage = 'No speech was detected. Please try again.';
+        }
+        
+        speechStatus.textContent = errorMessage;
+        speechBtn.classList.remove('listening');
+    }
     
     let categories = [];
     let entities = [];
