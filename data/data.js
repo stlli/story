@@ -1,6 +1,6 @@
-const { PREDEFINED_ENTITIES } = require('./entities');
-const { POKEMON_ENTITIES } = require('./entities_pm');
-const { NINJAGO_ENTITIES } = require('./entities_ninjago');
+const { NORMAL_ENTITIES } = require('./normal/entities');
+const { POKEMON_ENTITIES } = require('./pokemon/entities');
+const { NINJAGO_ENTITIES } = require('./ninjago/entities');
 const { 
   MICKEY_AND_FRIENDS, 
   LION_KING, 
@@ -12,9 +12,9 @@ const {
   FROZEN_TOPICS,
 } = require('./disney/topics');
 
-const { NORMAL_TOPICS } = require('./topics');
-const { TOPICS_PM } = require('./topics_pm');
-const { TOPICS_NINJAGO } = require('./topics_ninjago');
+const { NORMAL_TOPICS } = require('./normal/topics');
+const { TOPICS_PM } = require('./pokemon/topics');
+const { TOPICS_NINJAGO } = require('./ninjago/topics');
 
 const ALL_CATEGORIES = {
     normal: createCategoryStructure(NORMAL_TOPICS, 'normal'),
@@ -26,7 +26,7 @@ const ALL_CATEGORIES = {
 };
 
 const ALL_ENTITIES = {
-    normal: addIdsToEntities(PREDEFINED_ENTITIES, 'normal'),
+    normal: addIdsToEntities(NORMAL_ENTITIES, 'normal'),
     pokemon: addIdsToEntities(POKEMON_ENTITIES, 'pokemon'),
     ninjago: addIdsToEntities(NINJAGO_ENTITIES, 'ninjago'),
     mickey_and_friends: addIdsToEntities(MICKEY_AND_FRIENDS, 'mickey-and-friends'),

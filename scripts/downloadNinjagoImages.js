@@ -9,7 +9,7 @@ const https = require('https');
 const path = require('path');
 
 // Import Ninjago characters
-const { NINJAGO_ENTITIES } = require('../data/entities_ninjago');
+const { NINJAGO_ENTITIES } = require('../data/ninjago/entities');
 
 // Create images directory if it doesn't exist
 const imageDir = path.join(__dirname, '../public/images/entities');

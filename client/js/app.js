@@ -135,39 +135,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Initialize the app
     async function init() {
         setupEventListeners();
-        await loadCategoryTypes();
         await loadCategoryData();
-    }
-    
-    // Load available category types
-    async function loadCategoryTypes() {
-        try {
-            const response = await fetch('/api/category-types');
-            const categoryTypes = await response.json();
-            const categorySelect = document.getElementById('story-category');
-            
-            // Clear existing options except the first one (which is a placeholder)
-            while (categorySelect.options.length > 1) {
-                categorySelect.remove(1);
-            }
-            
-            // Add new category options
-            categoryTypes.forEach(category => {
-                const option = document.createElement('option');
-                option.value = category.id;
-                option.textContent = category.name;
-                categorySelect.appendChild(option);
-            });
-            
-            // Set up change event listener
-            categorySelect.addEventListener('change', async (e) => {
-                currentCategory = e.target.value;
-                await loadCategoryData();
-            });
-            
-        } catch (error) {
-            console.error('Error loading category types:', error);
-        }
     }
     
     // Load data for the current category
@@ -381,15 +349,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Set up event listeners
     function setupEventListeners() {
         generateBtn.addEventListener('click', generateStory);
-        promptInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') {
-                generateStory();
-            }
-        });
-        
-        // Add event listener for category selection
-        const categorySelect = document.getElementById('story-category');
-        categorySelect.addEventListener('change', async (e) => {
+        storyCategorySelect.addEventListener('change', async (e) => {
             currentCategory = e.target.value;
             await loadCategoryData();
         });
