@@ -30,6 +30,15 @@ app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'client', 'index.html'));
 });
 
+// API endpoint to get available category types
+app.get('/api/category-types', (req, res) => {
+    const categories = Object.keys(storyGenerator.ALL_CATEGORIES).map(key => ({
+        id: key,
+        name: key.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')
+    }));
+    res.json(categories);
+});
+
 // API endpoint to get categories with their topics based on story type
 app.get('/api/categories', (req, res) => {
     const categoryType = req.query.category || 'normal';

@@ -1,10 +1,4 @@
 const path = require('path');
-const { PREDEFINED_ENTITIES } = require('../data/entities');
-const { POKEMON_ENTITIES } = require('../data/entities_pm');
-const { NINJAGO_ENTITIES } = require('../data/entities_ninjago');
-const { NORMAL_TOPICS } = require('../data/topics');
-const { TOPICS_PM } = require('../data/topics_pm');
-const { TOPICS_NINJAGO } = require('../data/topics_ninjago');
 const { generateStoryPrompt, generatePokemonFlightStory } = require('../data/promptTemplates');
 
 const DEFAULT_AGE = 8;
@@ -13,58 +7,9 @@ const MAX_PROMPT_LENGTH = 500;
 
 class StoryGenerator {
     constructor() {
-        // Create category structures
-        this.NORMAL_CATEGORIES = this.createCategoryStructure(NORMAL_TOPICS, 'normal');
-        this.POKEMON_CATEGORIES = this.createCategoryStructure(TOPICS_PM, 'pokemon');
-        this.NINJAGO_CATEGORIES = this.createCategoryStructure(TOPICS_NINJAGO, 'ninjago');
-        
-        // Combine all categories for easy access
-        this.ALL_CATEGORIES = {
-            normal: this.NORMAL_CATEGORIES,
-            pokemon: this.POKEMON_CATEGORIES,
-            ninjago: this.NINJAGO_CATEGORIES
-        };
-        
-        // Add IDs to entities for easier reference
-        this.NORMAL_ENTITIES = PREDEFINED_ENTITIES.map((entity, index) => ({
-            id: `normal-entity-${index}`,
-            type: 'normal',
-            ...entity
-        }));
-        
-        this.POKEMON_ENTITIES_WITH_IDS = POKEMON_ENTITIES.map((entity, index) => ({
-            id: `pokemon-entity-${index}`,
-            type: 'pokemon',
-            ...entity
-        }));
-        
-        // Add IDs to Ninjago entities
-        this.NINJAGO_ENTITIES_WITH_IDS = NINJAGO_ENTITIES.map((entity, index) => ({
-            id: `ninjago-entity-${index}`,
-            type: 'ninjago',
-            ...entity
-        }));
-        
-        this.ALL_ENTITIES = {
-            normal: this.NORMAL_ENTITIES,
-            pokemon: this.POKEMON_ENTITIES_WITH_IDS,
-            ninjago: this.NINJAGO_ENTITIES_WITH_IDS
-        };
-    }
-    
-    createCategoryStructure(topics, categoryName) {
-        return topics.map(category => ({
-            id: `${categoryName}-${category.category.toLowerCase().replace(/\s+/g, '-')}`,
-            name: category.category,
-            type: categoryName,
-            subtopics: category.subtopics.map(subtopic => ({
-                id: `${categoryName}-${category.category.toLowerCase().replace(/\s+/g, '-')}-${subtopic.name.toLowerCase().replace(/\s+/g, '-')}`,
-                name: subtopic.name,
-                aspects: subtopic.aspects,
-                category: category.category,
-                type: categoryName
-            }))
-        }));
+        const { ALL_CATEGORIES, ALL_ENTITIES } = require('../data/data');
+        this.ALL_CATEGORIES = ALL_CATEGORIES;
+        this.ALL_ENTITIES = ALL_ENTITIES;
     }
     
     getRandomElements(array, count) {
@@ -88,19 +33,29 @@ class StoryGenerator {
     }
     
     handleGetEntities(categoryType) {
+        if (categoryType === 'all') {
+            return Object.values(this.ALL_ENTITIES).flat();
+        }
         return this.ALL_ENTITIES[categoryType] || [];
     }
     
     handleGeneratePrompt({ userPrompt, age, topicId, entityIds, category = 'normal' }) {
         const categories = this.ALL_CATEGORIES[category] || [];
-        const allEntities = this.ALL_ENTITIES[category] || [];
+        let allEntities = [];
+        
+        // Handle Disney entities differently as they're already in the right format
+        if (category === 'disney') {
+            allEntities = this.ALL_ENTITIES.disney || [];
+        } else {
+            allEntities = this.ALL_ENTITIES[category] || [];
+        }
         
         let topic = null;
         
         // If topicId is provided, try to find the topic
         if (topicId) {
             // Flatten topics to find the selected one
-            const allTopics = categories.flatMap(cat => cat.subtopics);
+            const allTopics = categories.flatMap(cat => cat.subtopics || []);
             
             // Try to find topic by full ID first, then by ID suffix if not found
             topic = allTopics.find(t => t.id === topicId) ||
@@ -111,9 +66,31 @@ class StoryGenerator {
             }
         }
         
-        // Find selected entities
+        // Find selected entities - handle both old and new entity structures
         const selectedEntities = entityIds
-            .map(id => allEntities.find(e => e.id === id))
+            .map(id => {
+                // First try exact match
+                let entity = allEntities.find(e => e.id === id);
+                
+                // If not found, try matching by name (for backward compatibility)
+                if (!entity) {
+                    entity = allEntities.find(e => 
+                        e.name && e.name.toLowerCase() === id.toLowerCase() ||
+                        e.character?.name?.toLowerCase() === id.toLowerCase()
+                    );
+                }
+                
+                // If still not found, try partial match
+                if (!entity) {
+                    entity = allEntities.find(e => 
+                        e.id.includes(id) || id.includes(e.id) ||
+                        (e.name && e.name.toLowerCase().includes(id.toLowerCase())) ||
+                        (e.character?.name && e.character.name.toLowerCase().includes(id.toLowerCase()))
+                    );
+                }
+                
+                return entity;
+            })
             .filter(Boolean);
             
         if (selectedEntities.length === 0) {
@@ -123,9 +100,17 @@ class StoryGenerator {
         // Generate the appropriate story prompt based on category
         let storyPrompt;
         const { CATEGORY } = require('./enum');
-        const characterDescriptions = selectedEntities.map(entity => 
-            `${entity.character.name} (${entity.character.role}): ${entity.character.background?.origin_story || ''}`
-        ).join('\n- ');
+        
+        // Handle character descriptions for both old and new entity structures
+        const characterDescriptions = selectedEntities.map(entity => {
+            // New structure has character as a direct property, old structure has it nested under 'character'
+            const char = entity.character || entity;
+            const name = char.name || 'Unknown Character';
+            const role = char.role || char.background?.role || 'Character';
+            const origin = char.background?.origin_story || char.background?.originStory || 'No background information available';
+            
+            return `${name} (${role}): ${origin}`;
+        }).join('\n- ');
         
         // Create the prompt based on what's available
         let storyContext = '';
