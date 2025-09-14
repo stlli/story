@@ -3,6 +3,7 @@ const POKEMON_ENTITIES = [
   {
     "character": {
       "name": "Pikachu",
+      "image": "/public/images/entities/pikachu.jpg",
       "species": "Mouse Pokémon",
       "gender": "Male",
       "age": "5",
@@ -46,6 +47,7 @@ const POKEMON_ENTITIES = [
   {
     "character": {
       "name": "Charizard",
+      "image": "/public/images/entities/charizard.jpg",
       "species": "Flame Pokémon",
       "gender": "Male",
       "age": "8",
@@ -88,6 +90,7 @@ const POKEMON_ENTITIES = [
   {
     "character": {
       "name": "Mewtwo",
+      "image": "/public/images/entities/mewtwo.jpg",
       "species": "Genetic Pokémon",
       "gender": "Genderless",
       "age": "3",
@@ -130,6 +133,7 @@ const POKEMON_ENTITIES = [
   {
     "character": {
       "name": "Bulbasaur",
+      "image": "/public/images/entities/bulbasaur.jpg",
       "species": "Seed Pokémon",
       "gender": "Male",
       "age": "4",
@@ -172,6 +176,7 @@ const POKEMON_ENTITIES = [
   {
     "character": {
       "name": "Squirtle",
+      "image": "/public/images/entities/squirtle.jpg",
       "species": "Tiny Turtle Pokémon",
       "gender": "Male",
       "age": "3",
@@ -214,6 +219,7 @@ const POKEMON_ENTITIES = [
   {
     "character": {
       "name": "Jigglypuff",
+      "image": "/public/images/entities/jigglypuff.jpg",
       "species": "Balloon Pokémon",
       "gender": "Female",
       "age": "3",
@@ -256,6 +262,7 @@ const POKEMON_ENTITIES = [
   {
     "character": {
       "name": "Snorlax",
+      "image": "/public/images/entities/snorlax.jpg",
       "species": "Sleeping Pokémon",
       "gender": "Male",
       "age": "7",
@@ -298,6 +305,7 @@ const POKEMON_ENTITIES = [
   {
     "character": {
       "name": "Gengar",
+      "image": "/public/images/entities/gengar.jpg",
       "species": "Shadow Pokémon",
       "gender": "Male",
       "age": "10",
@@ -340,6 +348,7 @@ const POKEMON_ENTITIES = [
   {
     "character": {
       "name": "Dragonite",
+      "image": "/public/images/entities/dragonite.jpg",
       "species": "Dragon Pokémon",
       "gender": "Male",
       "age": "12",
@@ -382,6 +391,7 @@ const POKEMON_ENTITIES = [
   {
     "character": {
       "name": "Lugia",
+      "image": "/public/images/entities/lugia.jpg",
       "species": "Diving Pokémon",
       "gender": "Genderless",
       "age": "1000",
@@ -413,9 +423,16 @@ const POKEMON_ENTITIES = [
       },
       "story_elements": {
         "motivation": "To maintain balance between the land, sea, and sky",
-        "flaws": [
-        "Can be too distant",
-        "Struggles to connect with others"
+        "weaknesses": [
+          "Ice",
+          "Electric",
+          "Rock",
+          "Dark",
+          "Ghost"
+        ],
+        "personality_flaws": [
+          "Can be too distant",
+          "Struggles to connect with others"
         ],
         "catchphrase": "Lugiaaa..."
       }
@@ -424,6 +441,7 @@ const POKEMON_ENTITIES = [
   {
     "character": {
       "name": "Lucario",
+      "image": "/public/images/entities/lucario.jpg",
       "species": "Aura Pokémon",
       "gender": "Male",
       "age": "8",
@@ -466,6 +484,7 @@ const POKEMON_ENTITIES = [
   {
     "character": {
       "name": "Greninja",
+      "image": "/public/images/entities/greninja.jpg",
       "species": "Ninja Pokémon",
       "gender": "Male",
       "age": "6",
@@ -508,6 +527,7 @@ const POKEMON_ENTITIES = [
   {
     "character": {
       "name": "Sylveon",
+      "image": "/public/images/entities/sylveon.jpg",
       "species": "Intertwining Pokémon",
       "gender": "Female",
       "age": "3",
@@ -550,6 +570,7 @@ const POKEMON_ENTITIES = [
   {
     "character": {
       "name": "Garchomp",
+      "image": "/public/images/entities/garchomp.jpg",
       "species": "Mach Pokémon",
       "gender": "Male",
       "age": "9",
@@ -592,6 +613,7 @@ const POKEMON_ENTITIES = [
   {
     "character": {
       "name": "Mimikyu",
+      "image": "/public/images/entities/mimikyu.jpg",
       "species": "Disguise Pokémon",
       "gender": "Genderless",
       "age": "5",
@@ -634,6 +656,7 @@ const POKEMON_ENTITIES = [
   {
     "character": {
       "name": "Umbreon",
+      "image": "/public/images/entities/umbreon.jpg",
       "species": "Moonlight Pokémon",
       "gender": "Male",
       "age": "4",
@@ -676,6 +699,7 @@ const POKEMON_ENTITIES = [
   {
     "character": {
       "name": "Gardevoir",
+      "image": "/public/images/entities/gardevoir.jpg",
       "species": "Embrace Pokémon",
       "gender": "Female",
       "age": "6",
@@ -718,6 +742,7 @@ const POKEMON_ENTITIES = [
   {
     "character": {
       "name": "Tyranitar",
+      "image": "/public/images/entities/tyranitar.jpg",
       "species": "Armor Pokémon",
       "gender": "Male",
       "age": "11",
@@ -760,6 +785,7 @@ const POKEMON_ENTITIES = [
   {
     "character": {
       "name": "Rayquaza",
+      "image": "/public/images/entities/rayquaza.jpg",
       "species": "Sky High Pokémon",
       "gender": "Genderless",
       "age": "1000",
@@ -802,6 +828,7 @@ const POKEMON_ENTITIES = [
   {
     "character": {
       "name": "Eevee",
+      "image": "/public/images/entities/eevee.jpg",
       "species": "Evolution Pokémon",
       "gender": "Female",
       "age": "2",

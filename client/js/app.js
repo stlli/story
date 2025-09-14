@@ -126,8 +126,15 @@ document.addEventListener('DOMContentLoaded', function() {
             const isSelected = selectedEntities.includes(entity.id);
             const entityElement = document.createElement('div');
             entityElement.className = `entity-card ${isSelected ? 'selected' : ''}`;
+            
+            // Check if the entity has an image path
+            const imagePath = entity.character.image || '';
+            const hasImage = imagePath && !imagePath.endsWith('.svg'); // Skip SVG placeholders
+            
             entityElement.innerHTML = `
-                <div class="entity-avatar">${entity.character.name.charAt(0)}</div>
+                <div class="entity-avatar" ${hasImage ? `style="background-image: url('${imagePath}')"` : ''}>
+                    ${hasImage ? '' : entity.character.name.charAt(0)}
+                </div>
                 <div class="entity-info">
                     <div class="entity-name">${entity.character.name}</div>
                     <div class="entity-role">${entity.character.role}</div>
