@@ -1,0 +1,51 @@
+Server is running at http://localhost:3000
+Available categories: [
+  {
+    id: 'normal-imagination',
+    name: 'Imagination',
+    subtopics: [ [Object], [Object], [Object] ]
+  },
+  {
+    id: 'normal-nature',
+    name: 'Nature',
+    subtopics: [ [Object], [Object], [Object] ]
+  }
+]
+Selected topic: {
+  id: 'normal-imagination-fantasy-realms',
+  name: 'Fantasy Realms',
+  aspects: [
+    'Forests of magic',
+    'Cities of enchantment',
+    'Castles of adventure',
+    'Islands of wonder'
+  ],
+  category: undefined,
+  type: 'normal',
+  fullId: 'normal-imagination-normal-imagination-fantasy-realms'
+}
+Available categories: [
+  {
+    id: 'normal-imagination',
+    name: 'Imagination',
+    subtopics: [ [Object], [Object], [Object] ]
+  },
+  {
+    id: 'normal-nature',
+    name: 'Nature',
+    subtopics: [ [Object], [Object], [Object] ]
+  }
+]
+Selected topic: {
+  id: 'normal-imagination-fantasy-realms',
+  name: 'Fantasy Realms',
+  aspects: [
+    'Forests of magic',
+    'Cities of enchantment',
+    'Castles of adventure',
+    'Islands of wonder'
+  ],
+  category: undefined,
+  type: 'normal',
+  fullId: 'normal-imagination-normal-imagination-fantasy-realms'
+}

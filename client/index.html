@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LLM Prompt Generator</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+            line-height: 1.6;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem;
+            color: #333;
+        }
+        h1 {
+            color: #2c3e50;
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+        .container {
+            background-color: #f9f9f9;
+            border-radius: 8px;
+            padding: 2rem;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+        .selection-section {
+            margin-bottom: 2rem;
+            padding: 1.5rem;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+        
+        .selection-section h2 {
+            margin-top: 0;
+            margin-bottom: 1.5rem;
+            color: #2c3e50;
+            font-size: 1.5rem;
+            font-weight: 600;
+            padding-bottom: 0.5rem;
+            border-bottom: 2px solid #e0e0e0;
+        }
+        
+        .selection-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 1.5rem;
+        }
+        
+        .category-card {
+            background: white;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        
+        .category-header {
+            padding: 1rem 1.25rem;
+            background: #f0f7fd;
+            border-left: 4px solid #3498db;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: all 0.2s;
+        }
+        
+        .category-header:hover {
+            background: #e1f0fa;
+        }
+        
+        .category-header h3 {
+            margin: 0;
+            color: #2c3e50;
+            font-size: 1.1rem;
+            font-weight: 600;
+        }
+        
+        .toggle-icon {
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: #3498db;
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 4px;
+            background: rgba(52, 152, 219, 0.1);
+        }
+        
+        .topics-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 1rem;
+            padding: 1rem;
+            background: #fafcfd;
+            border: 1px solid #e0e0e0;
+            border-top: none;
+            border-bottom-left-radius: 8px;
+            border-bottom-right-radius: 8px;
+        }
+        
+        .topic-card {
+            background: white;
+            border: 2px solid #e0e0e0;
+            border-radius: 6px;
+            padding: 1rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .topic-card:hover {
+            border-color: #3498db;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        
+        .topic-card.selected {
+            border-color: #3498db;
+            background-color: #e3f2fd;
+        }
+        
+        .topic-card h4 {
+            margin: 0 0 0.5rem 0;
+            color: #2c3e50;
+            font-size: 1rem;
+        }
+        
+        .topic-aspect {
+            margin: 0;
+            color: #666;
+            font-size: 0.85rem;
+            line-height: 1.4;
+        }
+        
+        .entity-card {
+            background: white;
+            border: 2px solid #e0e0e0;
+            border-radius: 6px;
+            padding: 1rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .entity-card:hover {
+            border-color: #3498db;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        
+        .topic-card.selected, .entity-card.selected {
+            border-color: #3498db;
+            background-color: #e3f2fd;
+        }
+        
+        .entity-card {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+        
+        .entity-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background-color: #e0e0e0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            color: #555;
+            flex-shrink: 0;
+        }
+        
+        .entity-info {
+            flex-grow: 1;
+        }
+        
+        .entity-name {
+            font-weight: 600;
+            margin: 0 0 0.25rem 0;
+        }
+        
+        .entity-role {
+            font-size: 0.8rem;
+            color: #666;
+            margin: 0;
+        }
+        
+        .form-options {
+            display: flex;
+            gap: 1rem;
+            align-items: flex-end;
+            margin-bottom: 2rem;
+        }
+        
+        .form-group {
+            margin-bottom: 0;
+            flex: 1;
+        }
+        
+        .generate-btn {
+            height: fit-content;
+            padding: 0.5rem 1.5rem;
+        }
+        
+        .form-control {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-family: inherit;
+            font-size: 1rem;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+            color: #2c3e50;
+        }
+        
+        textarea {
+            width: 100%;
+            min-height: 120px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-family: inherit;
+            font-size: 1rem;
+            resize: vertical;
+        }
+        button {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: #2980b9;
+        }
+        button:disabled {
+            background-color: #95a5a6;
+            cursor: not-allowed;
+        }
+        #result {
+            margin-top: 2rem;
+            padding: 1.5rem;
+            background-color: #f0f7fd;
+            border-left: 4px solid #3498db;
+            border-radius: 4px;
+            font-family: inherit;
+            min-height: 100px;
+            display: none;
+            line-height: 1.6;
+            position: relative;
+        }
+        
+        #result h3 {
+            margin-top: 0;
+            color: #2c3e50;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        #result .prompt-content {
+            background: white;
+            padding: 1rem;
+            border-radius: 4px;
+            margin-top: 1rem;
+            border: 1px solid #ddd;
+            white-space: pre-wrap;
+            font-family: 'Courier New', monospace;
+            position: relative;
+        }
+        
+        .copy-btn {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 0.25rem 0.75rem;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.875rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            transition: background-color 0.2s;
+        }
+        
+        .copy-btn:hover {
+            background-color: #2980b9;
+        }
+        
+        .copy-btn:active {
+            transform: translateY(1px);
+        }
+        
+        .copy-btn.copied {
+            background-color: #2ecc71;
+        }
+        
+        .copy-icon {
+            width: 14px;
+            height: 14px;
+            fill: currentColor;
+        }
+        .loading {
+            display: inline-block;
+            width: 1.5rem;
+            height: 1.5rem;
+            border: 3px solid rgba(0, 0, 0, 0.1);
+            border-radius: 50%;
+            border-top-color: #3498db;
+            animation: spin 1s ease-in-out infinite;
+            margin-right: 0.5rem;
+            vertical-align: middle;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        .entities {
+            margin: 1rem 0;
+            padding: 1rem;
+            background-color: #f0f0f0;
+            border-radius: 4px;
+        }
+        .entity {
+            display: inline-block;
+            margin: 0.25rem;
+            padding: 0.25rem 0.75rem;
+            background-color: #e0e0e0;
+            border-radius: 20px;
+            font-size: 0.9rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Story Generator</h1>
+        
+        <div class="form-group" style="margin-bottom: 1.5rem;">
+            <label for="age-input">Age Group:</label>
+            <select id="age-input" class="form-control">
+                <option value="5">5-7 years</option>
+                <option value="8" selected>8-10 years</option>
+                <option value="11">11-13 years</option>
+            </select>
+        </div>
+        
+        <div class="selection-section">
+            <h2>Story Category</h2>
+            <div class="form-group">
+                <select id="story-category" class="form-control">
+                    <option value="normal">Normal Story</option>
+                    <option value="pokemon">Pokémon Story</option>
+                </select>
+            </div>
+        </div>
+        
+        <div class="selection-section">
+            <h2>Choose a Topic</h2>
+            <div id="topic-selection" class="selection-grid">
+                <!-- Topics will be inserted here by JavaScript -->
+            </div>
+        </div>
+        
+        <div class="selection-section">
+            <h2>Choose Characters (Select 1-3)</h2>
+            <div id="entity-selection" class="selection-grid">
+                <!-- Entities will be inserted here by JavaScript -->
+            </div>
+        </div>
+        
+        <div class="form-group">
+            <label for="prompt">Story Idea (optional):</label>
+            <textarea id="prompt" placeholder="Type your story idea here or leave blank for a random story..."></textarea>
+        </div>
+        
+        <div class="form-options">
+            <!-- Age group selection has been moved to the top of the form -->
+            
+            <button id="generate-btn" class="generate-btn">
+                <span class="btn-text">Generate Story</span>
+            </button>
+        </div>
+        
+        <div id="result"></div>
+
+        <script>
+            document.addEventListener('DOMContentLoaded', function() {
+                const promptInput = document.getElementById('prompt');
+                const generateBtn = document.getElementById('generate-btn');
+                const resultDiv = document.getElementById('result');
+                const entitiesList = document.getElementById('entities-list');
+                
+                // Add event listener to the generate button
+                generateBtn.addEventListener('click', async () => {
+                    const prompt = promptInput.value.trim();
+                    const age = document.getElementById('age-input').value;
+
+                    // Show loading state
+                    const btnText = generateBtn.querySelector('.btn-text');
+                    const originalText = btnText.textContent;
+                    btnText.textContent = 'Generating...';
+                    generateBtn.disabled = true;
+                    
+                    try {
+                        const response = await fetch('http://localhost:3000/api/generate-prompt', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify({ prompt, age })
+                        });
+                        
+                        if (!response.ok) {
+                            throw new Error('Network response was not ok');
+                        }
+                        
+                        const data = await response.json();
+                        
+                        // Display the result in a more readable format
+                        const formattedPrompt = data.structured_prompt
+                            .replace(/\n/g, '<br>')
+                            .replace(/\s{4,}/g, '    '); // Preserve indentation
+                        
+                        resultDiv.innerHTML = `
+                            <h3>
+                                Your Story Prompt:
+                                <button class="copy-btn" title="Copy to clipboard">
+                                    <svg class="copy-icon" viewBox="0 0 24 24">
+                                        <path d="M19,21H8V7H19M19,5H8A2,2 0 0,0 6,7V21A2,2 0 0,0 8,23H19A2,2 0 0,0 21,21V7A2,2 0 0,0 19,5M16,1H4A2,2 0 0,0 2,3V17H4V3H16V1Z" />
+                                    </svg>
+                                    Copy
+                                </button>
+                            </h3>
+                            <p><strong>Topic:</strong> ${data.topic} - ${data.aspect}</p>
+                            <p><strong>Characters:</strong> ${data.characters.join(', ')}</p>
+                            <div class="prompt-content">${formattedPrompt}</div>
+                        `;
+                        
+                        // Add copy functionality
+                        const copyBtn = resultDiv.querySelector('.copy-btn');
+                        copyBtn.addEventListener('click', () => {
+                            const promptContent = resultDiv.querySelector('.prompt-content').textContent;
+                            navigator.clipboard.writeText(promptContent).then(() => {
+                                const originalText = copyBtn.textContent.trim();
+                                copyBtn.innerHTML = `
+                                    <svg class="copy-icon" viewBox="0 0 24 24">
+                                        <path d="M21,7L9,19L3.5,13.5L4.91,12.09L9,16.17L19.59,5.59L21,7Z" />
+                                    </svg>
+                                    Copied!
+                                `;
+                                copyBtn.classList.add('copied');
+                                setTimeout(() => {
+                                    copyBtn.innerHTML = `
+                                        <svg class="copy-icon" viewBox="0 0 24 24">
+                                            <path d="M19,21H8V7H19M19,5H8A2,2 0 0,0 6,7V21A2,2 0 0,0 8,23H19A2,2 0 0,0 21,21V7A2,2 0 0,0 19,5M16,1H4A2,2 0 0,0 2,3V17H4V3H16V1Z" />
+                                        </svg>
+                                        Copy
+                                    `;
+                                    copyBtn.classList.remove('copied');
+                                }, 2000);
+                            });
+                        });
+                        resultDiv.style.display = 'block';
+                        
+                    } catch (error) {
+                        console.error('Error:', error);
+                        resultDiv.textContent = 'Error generating prompt. Please try again.';
+                        resultDiv.style.display = 'block';
+                    } finally {
+                        // Reset button state
+                        btnText.textContent = originalText;
+                        generateBtn.disabled = false;
+                    }
+                });
+            });
+        </script>
+        <script src="/js/app.js"></script>
+    </div>
+</body>
+</html>
