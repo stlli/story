@@ -5,6 +5,10 @@ const { NORMAL_TOPICS } = require('../data/topics');
 const { TOPICS_PM } = require('../data/topics_pm');
 const { generateStoryPrompt, generatePokemonFlightStory } = require('../data/promptTemplates');
 
+const DEFAULT_AGE = 8;
+const MIN_PROMPT_LENGTH = 300;
+const MAX_PROMPT_LENGTH = 500;
+
 class StoryGenerator {
     constructor() {
         // Create category structures
@@ -98,33 +102,19 @@ class StoryGenerator {
         
         // Generate the appropriate story prompt based on category
         let storyPrompt;
-        if (category === 'pokemon') {
-            const characterDescriptions = selectedEntities.map(entity => 
-                `${entity.character.name} (${entity.character.role}): ${entity.character.background?.origin_story || 'A brave Pokémon ready for battle'}`
-            ).join('\n- ');
-            
-            storyPrompt = generatePokemonFlightStory(
-                `${topic.category}: ${topic.name}`,
-                characterDescriptions,
-                topic.name,
-                age || 8,
-                500,
-                800
-            );
-        } else {
-            const characterDescriptions = selectedEntities.map(entity => 
-                `${entity.character.name} (${entity.character.role}): ${entity.character.background.origin_story}`
-            ).join('\n- ');
-            
-            storyPrompt = generateStoryPrompt(
-                `${topic.category}: ${topic.name}`,
-                characterDescriptions,
-                topic.name,
-                age || 8,
-                500,
-                800
-            );
-        }
+        const { CATEGORY } = require('./enum');
+        const characterDescriptions = selectedEntities.map(entity => 
+            `${entity.character.name} (${entity.character.role}): ${entity.character.background?.origin_story}`
+        ).join('\n- ');
+        
+        storyPrompt = generatePokemonFlightStory(
+            `${topic.category}: ${topic.name}`,
+            characterDescriptions,
+            topic.name,
+            age || DEFAULT_AGE,
+            MIN_PROMPT_LENGTH,
+            MAX_PROMPT_LENGTH
+        );
         
         return {
             story: `This is a generated ${category} story based on the topic "${topic.name}" and characters: ${selectedEntities.map(e => e.character.name).join(', ')}.\n\n${storyPrompt}`,
