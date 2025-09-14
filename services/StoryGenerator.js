@@ -1,8 +1,10 @@
 const path = require('path');
 const { PREDEFINED_ENTITIES } = require('../data/entities');
 const { POKEMON_ENTITIES } = require('../data/entities_pm');
+const { NINJAGO_ENTITIES } = require('../data/entities_ninjago');
 const { NORMAL_TOPICS } = require('../data/topics');
 const { TOPICS_PM } = require('../data/topics_pm');
+const { TOPICS_NINJAGO } = require('../data/topics_ninjago');
 const { generateStoryPrompt, generatePokemonFlightStory } = require('../data/promptTemplates');
 
 const DEFAULT_AGE = 8;
@@ -14,11 +16,13 @@ class StoryGenerator {
         // Create category structures
         this.NORMAL_CATEGORIES = this.createCategoryStructure(NORMAL_TOPICS, 'normal');
         this.POKEMON_CATEGORIES = this.createCategoryStructure(TOPICS_PM, 'pokemon');
+        this.NINJAGO_CATEGORIES = this.createCategoryStructure(TOPICS_NINJAGO, 'ninjago');
         
         // Combine all categories for easy access
         this.ALL_CATEGORIES = {
             normal: this.NORMAL_CATEGORIES,
-            pokemon: this.POKEMON_CATEGORIES
+            pokemon: this.POKEMON_CATEGORIES,
+            ninjago: this.NINJAGO_CATEGORIES
         };
         
         // Add IDs to entities for easier reference
@@ -34,9 +38,17 @@ class StoryGenerator {
             ...entity
         }));
         
+        // Add IDs to Ninjago entities
+        this.NINJAGO_ENTITIES_WITH_IDS = NINJAGO_ENTITIES.map((entity, index) => ({
+            id: `ninjago-entity-${index}`,
+            type: 'ninjago',
+            ...entity
+        }));
+        
         this.ALL_ENTITIES = {
             normal: this.NORMAL_ENTITIES,
-            pokemon: this.POKEMON_ENTITIES_WITH_IDS
+            pokemon: this.POKEMON_ENTITIES_WITH_IDS,
+            ninjago: this.NINJAGO_ENTITIES_WITH_IDS
         };
     }
     

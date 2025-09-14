@@ -1,6 +1,7 @@
 const CATEGORY = {
     NORMAL: 'normal',
-    POKEMON: 'pokemon'
+    POKEMON: 'pokemon',
+    NINJAGO: 'ninjago'
 };
 
 module.exports = {
