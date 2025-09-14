@@ -336,7 +336,46 @@
             background-color: #2ecc71;
         }
         
-        .copy-icon {
+        .action-buttons {
+            display: inline-flex;
+            gap: 0.5rem;
+            margin-left: 0.5rem;
+        }
+        
+        .tts-btn {
+            background-color: #9b59b6;
+            color: white;
+            border: none;
+            padding: 0.25rem 0.75rem;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.875rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            transition: background-color 0.2s;
+        }
+        
+        .tts-btn:hover {
+            background-color: #8e44ad;
+        }
+        
+        .tts-btn:active {
+            transform: translateY(1px);
+        }
+        
+        .tts-btn.speaking {
+            background-color: #e74c3c;
+            animation: pulse 1.5s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.7; }
+            100% { opacity: 1; }
+        }
+        
+        .copy-icon, .tts-icon {
             width: 14px;
             height: 14px;
             fill: currentColor;
@@ -578,7 +617,7 @@
                 });
             });
         </script>
-        <script src="/js/app.js"></script>
+        <script type="module" src="/js/app.js"></script>
     </div>
 </body>
 </html>

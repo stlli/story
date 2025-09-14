@@ -1,3 +1,6 @@
+// Import TTS Service
+import { ttsService } from './services/ttsService.js';
+
 document.addEventListener('DOMContentLoaded', function() {
     const promptInput = document.getElementById('prompt');
     const generateBtn = document.getElementById('generate-btn');
@@ -416,12 +419,20 @@ document.addEventListener('DOMContentLoaded', function() {
             resultDiv.innerHTML = `
                 <h3>
                     Your Story Prompt:
-                    <button class="copy-btn" title="Copy to clipboard">
-                        <svg class="copy-icon" viewBox="0 0 24 24">
-                            <path d="M19,21H8V7H19M19,5H8A2,2 0 0,0 6,7V21A2,2 0 0,0 8,23H19A2,2 0 0,0 21,21V7A2,2 0 0,0 19,5M16,1H4A2,2 0 0,0 2,3V17H4V3H16V1Z" />
-                        </svg>
-                        Copy
-                    </button>
+                    <div class="action-buttons">
+                        <button class="tts-btn" title="Read story aloud">
+                            <svg class="tts-icon" viewBox="0 0 24 24">
+                                <path d="M3,9H7L12,4V20L7,15H3V9M16.59,12L14,9.41L15.41,8L18,10.59L20.59,8L22,9.41L19.41,12L22,14.59L20.59,16L18,13.41L15.41,16L14,14.59L16.59,12Z" />
+                            </svg>
+                            <span class="tts-text">Read Aloud</span>
+                        </button>
+                        <button class="copy-btn" title="Copy to clipboard">
+                            <svg class="copy-icon" viewBox="0 0 24 24">
+                                <path d="M19,21H8V7H19M19,5H8A2,2 0 0,0 6,7V21A2,2 0 0,0 8,23H19A2,2 0 0,0 21,21V7A2,2 0 0,0 19,5M16,1H4A2,2 0 0,0 2,3V17H4V3H16V1Z" />
+                            </svg>
+                            <span class="copy-text">Copy</span>
+                        </button>
+                    </div>
                 </h3>
                 ${storyTopic ? `<p><strong>Topic:</strong> ${storyTopic}${storyAspect ? ` - ${storyAspect}` : ''}</p>` : ''}
                 ${storyCharacters.length > 0 ? `<p><strong>Characters:</strong> ${storyCharacters.join(', ')}</p>` : ''}
@@ -433,23 +444,65 @@ document.addEventListener('DOMContentLoaded', function() {
             copyBtn.addEventListener('click', () => {
                 const promptContent = resultDiv.querySelector('.prompt-content').textContent;
                 navigator.clipboard.writeText(promptContent).then(() => {
-                    copyBtn.innerHTML = `
-                        <svg class="copy-icon" viewBox="0 0 24 24">
-                            <path d="M21,7L9,19L3.5,13.5L4.91,12.09L9,16.17L19.59,5.59L21,7Z" />
-                        </svg>
-                        Copied!
-                    `;
+                    const copyText = copyBtn.querySelector('.copy-text');
+                    copyText.textContent = 'Copied!';
                     copyBtn.classList.add('copied');
                     setTimeout(() => {
-                        copyBtn.innerHTML = `
-                            <svg class="copy-icon" viewBox="0 0 24 24">
-                                <path d="M19,21H8V7H19M19,5H8A2,2 0 0,0 6,7V21A2,2 0 0,0 8,23H19A2,2 0 0,0 21,21V7A2,2 0 0,0 19,5M16,1H4A2,2 0 0,0 2,3V17H4V3H16V1Z" />
-                            </svg>
-                            Copy
-                        `;
+                        copyText.textContent = 'Copy';
                         copyBtn.classList.remove('copied');
                     }, 2000);
                 });
+            });
+
+            // Initialize TTS
+            const ttsBtn = resultDiv.querySelector('.tts-btn');
+            const ttsText = ttsBtn.querySelector('.tts-text');
+            
+            // Handle TTS state changes
+            const handleTTSState = (state) => {
+                console.log('TTS State:', state.state, state);
+                
+                // Skip state updates if we're in the middle of pausing
+                if (state.state === 'error' && state.data?.error === 'interrupted') {
+                    console.log('Ignoring interrupted state during pause');
+                    return;
+                }
+
+                switch (state.state) {
+                    case 'speaking':
+                        ttsText.textContent = 'Pause';
+                        ttsBtn.classList.add('speaking');
+                        break;
+                    case 'paused':
+                        ttsText.textContent = 'Resume';
+                        ttsBtn.classList.remove('speaking');
+                        break;
+                    case 'stopped':
+                    case 'ended':
+                        ttsText.textContent = 'Read Aloud';
+                        ttsBtn.classList.remove('speaking');
+                        break;
+                    case 'error':
+                        // Only show error if it's not related to pausing
+                        if (state.data?.error !== 'interrupted') {
+                            console.error('TTS Error:', state.data);
+                            ttsText.textContent = 'Read Aloud';
+                            ttsBtn.classList.remove('speaking');
+                            alert('Error reading story. Please try again.');
+                        }
+                        break;
+                }
+            };
+            
+            // Toggle TTS on button click
+            ttsBtn.addEventListener('click', () => {
+                const promptContent = resultDiv.querySelector('.prompt-content').textContent;
+                ttsService.speak(promptContent, handleTTSState);
+            });
+            
+            // Stop TTS when navigating away
+            window.addEventListener('beforeunload', () => {
+                ttsService.stop();
             });
             
             resultDiv.style.display = 'block';
