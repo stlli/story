@@ -1,5 +1,6 @@
 const path = require('path');
 const { generateStoryPrompt, generatePokemonFlightStory } = require('../data/promptTemplates');
+const { generateStoryFromPrompt } = require('./llmService');
 
 const DEFAULT_AGE = 8;
 const MIN_PROMPT_LENGTH = 300;
@@ -159,18 +160,36 @@ class StoryGenerator {
     }
     
     async handleGenerateStory({ userPrompt, topicId, entityIds, category = 'normal', age = 8 }) {
-        // Reuse the handleGeneratePrompt logic since it's very similar
-        const result = this.handleGeneratePrompt({
-            userPrompt,
-            topicId,
-            entityIds,
-            category,
-            age
-        });
-        
-        // In a real implementation, you might want to add additional story-specific logic here
-        // For now, we'll just return the result as is
-        return result;
+        try {
+            // First get the basic prompt structure
+            const promptData = this.handleGeneratePrompt({
+                userPrompt,
+                topicId,
+                entityIds,
+                category,
+                age
+            });
+            
+            // Generate the story using the llmService
+            const generatedStory = await generateStoryFromPrompt(promptData.prompt, age);
+            // Return the enhanced result with the generated story
+            return {
+                ...promptData,
+                story: generatedStory,
+                generated: true
+            };
+            
+        } catch (error) {
+            console.error('Error generating story with LLM:', error);
+            // Fall back to the basic prompt if LLM fails
+            return this.handleGeneratePrompt({
+                userPrompt,
+                topicId,
+                entityIds,
+                category,
+                age
+            });
+        }
     }
 }
 

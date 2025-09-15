@@ -37,21 +37,10 @@ class TTSService {
     pause() {
         if (!this.isSpeaking) return;
         
-        // Store the current state before pausing
-        this.isPaused = true;
+        this.speechSynthesis.cancel();
         this.isSpeaking = false;
-        
-        try {
-            // Cancel any ongoing speech
-            this.speechSynthesis.cancel();
-            this._updateState('paused');
-        } catch (error) {
-            console.warn('Error while pausing TTS:', error);
-            // If there's an error, make sure we're in a consistent state
-            this.isSpeaking = false;
-            this.isPaused = false;
-            this._updateState('error', { error: 'pause_failed' });
-        }
+        this.isPaused = true;
+        this._updateState('paused');
     }
 
     // Resume paused speech
@@ -78,36 +67,29 @@ class TTSService {
             return;
         }
 
-        try {
-            this.currentUtterance = new SpeechSynthesisUtterance(text);
-            this.isSpeaking = true;
-            this._updateState('speaking');
+        this.currentUtterance = new SpeechSynthesisUtterance(text);
+        this.isSpeaking = true;
+        this._updateState('speaking');
 
-            this.currentUtterance.onboundary = (event) => {
-                if (event.name === 'word' || event.name === 'sentence') {
-                    this.charIndex = event.charIndex;
-                    this.lastWordTime = Date.now();
-                }
-            };
+        this.currentUtterance.onboundary = (event) => {
+            if (event.name === 'word' || event.name === 'sentence') {
+                this.charIndex = event.charIndex;
+                this.lastWordTime = Date.now();
+            }
+        };
 
-            this.currentUtterance.onend = () => {
-                // Don't update state if we're in the middle of pausing
-                if (this.isPaused) return;
-                this.isSpeaking = false;
-                this._updateState('ended');
-            };
+        this.currentUtterance.onend = () => {
+            this.isSpeaking = false;
+            this._updateState('ended');
+        };
 
-            this.currentUtterance.onerror = (event) => {
-                // Don't treat 'interrupted' as an error when pausing
-                if (event.error === 'interrupted' && this.isPaused) return;
-                
-                this._handleError(event, 'speak_chunk');
-            };
+        this.currentUtterance.onerror = (event) => {
+            console.error('TTS Error:', event);
+            this.isSpeaking = false;
+            this._updateState('error', event);
+        };
 
-            this.speechSynthesis.speak(this.currentUtterance);
-        } catch (error) {
-            this._handleError(error, 'speak_chunk_initialization');
-        }
+        this.speechSynthesis.speak(this.currentUtterance);
     }
 
     // Update state and notify listeners
@@ -120,19 +102,6 @@ class TTSService {
                 charIndex: this.charIndex,
                 text: this.fullText,
                 ...(data && { data })
-            });
-        }
-    }
-    
-    _handleError(error, context = '') {
-        console.error(`TTS Error (${context}):`, error);
-        // Only update state if we're not in the middle of pausing
-        if (!this.isPaused) {
-            this.isSpeaking = false;
-            this.isPaused = false;
-            this._updateState('error', { 
-                error: error.toString(),
-                context
             });
         }
     }
