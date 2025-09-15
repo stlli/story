@@ -15,6 +15,8 @@ const openai = new OpenAI({
  */
 const generateStoryFromPrompt = async (prompt, age, temperature = 0.7, maxTokens = 1000) => {
     try {
+        // TODO: comment out to use openai.
+        return prompt;
         const systemMessage = `You are a creative children's story writer. Create an engaging story for ${age}-year-olds based on the following details.`;
 
         const response = await openai.chat.completions.create({
