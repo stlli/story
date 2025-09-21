@@ -1,8 +1,8 @@
-const { MICKEY_AND_FRIENDS_TOPICS } = require('./mickey_and_friends');
-const { LION_KING_TOPICS } = require('./lion_king');
-const { FROZEN_TOPICS } = require('./frozen');
+import { MICKEY_AND_FRIENDS_TOPICS } from './mickey_and_friends.js';
+import { LION_KING_TOPICS } from './lion_king.js';
+import { FROZEN_TOPICS } from './frozen.js';
 
-module.exports = {
+export {
   MICKEY_AND_FRIENDS_TOPICS,
   LION_KING_TOPICS,
   FROZEN_TOPICS

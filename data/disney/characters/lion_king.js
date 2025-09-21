@@ -204,6 +204,4 @@ const LION_KING = [
   // More Lion King characters can be added here
 ];
 
-module.exports = {
-  LION_KING
-};
+export { LION_KING };

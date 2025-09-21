@@ -269,6 +269,4 @@ const FROZEN = [
   }
 ];
 
-module.exports = {
-  FROZEN
-};
+export { FROZEN };

@@ -1,4 +1,4 @@
-const FROZEN_TOPICS = [
+export const FROZEN_TOPICS = [
   {
     "category": "Frozen",
     "subtopics": [
@@ -41,7 +41,3 @@ const FROZEN_TOPICS = [
     ]
   }
 ];
-
-module.exports = {
-  FROZEN_TOPICS
-};

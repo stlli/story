@@ -1,4 +1,4 @@
-const LION_KING_TOPICS = [
+export const LION_KING_TOPICS = [
   {
     "category": "The Lion King",
     "subtopics": [
@@ -41,7 +41,3 @@ const LION_KING_TOPICS = [
     ]
   }
 ];
-
-module.exports = {
-  LION_KING_TOPICS
-};

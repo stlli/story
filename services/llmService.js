@@ -1,7 +1,8 @@
-const { generateStory } = require('./gemmaService');
+import { generateStory } from './gemmaService.js';
+import { generateStoryWithOpenAi } from './openAiService.js';
 
 /**
- * Generates a story using the local Gemma model
+ * Generates a story using either the local Gemma model or OpenAI
  * @param {string} prompt - The user's prompt for the story
  * @param {number} age - The age of the target audience
  * @param {number} [temperature=0.7] - Controls randomness (0-1)
@@ -10,8 +11,14 @@ const { generateStory } = require('./gemmaService');
  */
 const generateStoryFromPrompt = async (prompt, age, temperature = 0.7, maxLength = 1000) => {
     try {
-        // Delegate to the Gemma service
-        return await generateStory(prompt, age, maxLength);
+        const useOpenAI = true; // Set to true to use OpenAI instead of Gemma
+        const systemMessage = `You are a creative children's story writer. Create an engaging story for ${age}-year-olds based on the following details.`;
+        
+        if (useOpenAI) {
+            return await generateStoryWithOpenAi(prompt, systemMessage, temperature, maxLength);
+        } else {
+            return await generateStory(prompt, systemMessage, maxLength);
+        }
     } catch (error) {
         console.error('Error in generateStoryFromPrompt:', error);
         // Fallback to returning the prompt if generation fails
@@ -19,6 +26,4 @@ const generateStoryFromPrompt = async (prompt, age, temperature = 0.7, maxLength
     }
 };
 
-module.exports = {
-    generateStoryFromPrompt
-};
+export { generateStoryFromPrompt };

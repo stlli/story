@@ -1,7 +1,7 @@
 // Import all Disney character categories
-const { MICKEY_AND_FRIENDS } = require('./mickey_and_friends');
-const { LION_KING } = require('./lion_king');
-const { FROZEN } = require('./frozen');
+import { MICKEY_AND_FRIENDS } from './mickey_and_friends.js';
+import { LION_KING } from './lion_king.js';
+import { FROZEN } from './frozen.js';
 
 // Combine all characters
 const ALL_DISNEY_CHARACTERS = [
@@ -11,9 +11,9 @@ const ALL_DISNEY_CHARACTERS = [
 ];
 
 // Export all characters and individual categories
-module.exports = {
+export { 
   MICKEY_AND_FRIENDS,
   LION_KING,
   FROZEN,
-  ALL_DISNEY_CHARACTERS
+  ALL_DISNEY_CHARACTERS 
 };

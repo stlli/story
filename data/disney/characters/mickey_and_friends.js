@@ -226,6 +226,4 @@ const MICKEY_AND_FRIENDS = [
   }
 ];
 
-module.exports = {
-  MICKEY_AND_FRIENDS
-};
+export { MICKEY_AND_FRIENDS };

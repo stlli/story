@@ -1,8 +1,12 @@
-require('dotenv').config();
-const express = require('express');
-const path = require('path');
-const cors = require('cors');
-const storyGenerator = require('./services/StoryGenerator');
+import 'dotenv/config';
+import express from 'express';
+import path from 'path';
+import cors from 'cors';
+import storyGenerator from './services/StoryGenerator.js';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // Helper function to handle async route handlers
 const asyncHandler = fn => (req, res, next) => {

@@ -1,5 +1,5 @@
 // Normal mode topics for the story application
-const NORMAL_TOPICS = [
+export const NORMAL_TOPICS = [
   {
     "category": "Imagination",
     "subtopics": [
@@ -98,5 +98,3 @@ const NORMAL_TOPICS = [
   }
 ];
 
-// Export the topics array for use in other modules
-module.exports = { NORMAL_TOPICS };

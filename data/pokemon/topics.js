@@ -1,4 +1,4 @@
-const TOPICS_PM = [
+export const TOPICS_PM = [
   {
     "category": "Flying Scenarios",
     "subtopics": [
@@ -96,5 +96,3 @@ const TOPICS_PM = [
     ]
   }
 ];
-
-module.exports = { TOPICS_PM };

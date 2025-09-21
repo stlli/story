@@ -1,4 +1,4 @@
-const MICKEY_AND_FRIENDS_TOPICS = [
+export const MICKEY_AND_FRIENDS_TOPICS = [
   {
     "category": "Mickey & Friends",
     "subtopics": [
@@ -41,7 +41,3 @@ const MICKEY_AND_FRIENDS_TOPICS = [
     ]
   }
 ];
-
-module.exports = {
-  MICKEY_AND_FRIENDS_TOPICS
-};

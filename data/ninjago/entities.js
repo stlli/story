@@ -351,6 +351,4 @@ const NINJAGO_ENTITIES = [
 ];
 
 // Export the characters array for use in other modules
-module.exports = {
-  NINJAGO_ENTITIES
-};
+export { NINJAGO_ENTITIES };

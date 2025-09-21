@@ -539,6 +539,4 @@ const NORMAL_ENTITIES = [
 ];
 
 // Export the characters arrays for use in other modules
-module.exports = { 
-  NORMAL_ENTITIES,
-};
+export { NORMAL_ENTITIES };

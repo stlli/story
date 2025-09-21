@@ -1,4 +1,4 @@
-const TOPICS_NINJAGO = [
+export const TOPICS_NINJAGO = [
   {
     "category": "Ninjago Adventures",
     "subtopics": [
@@ -106,4 +106,3 @@ const TOPICS_NINJAGO = [
   }
 ];
 
-module.exports = { TOPICS_NINJAGO };

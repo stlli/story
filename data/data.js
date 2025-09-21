@@ -1,20 +1,20 @@
-const { NORMAL_ENTITIES } = require('./normal/entities');
-const { POKEMON_ENTITIES } = require('./pokemon/entities');
-const { NINJAGO_ENTITIES } = require('./ninjago/entities');
-const { 
+import { NORMAL_ENTITIES } from './normal/entities.js';
+import { POKEMON_ENTITIES } from './pokemon/entities.js';
+import { NINJAGO_ENTITIES } from './ninjago/entities.js';
+import { 
   MICKEY_AND_FRIENDS, 
   LION_KING, 
   FROZEN, 
-} = require('./disney/characters');
-const {
+} from './disney/characters/index.js';
+import {
   MICKEY_AND_FRIENDS_TOPICS,
   LION_KING_TOPICS,
   FROZEN_TOPICS,
-} = require('./disney/topics');
+} from './disney/topics/index.js';
 
-const { NORMAL_TOPICS } = require('./normal/topics');
-const { TOPICS_PM } = require('./pokemon/topics');
-const { TOPICS_NINJAGO } = require('./ninjago/topics');
+import { NORMAL_TOPICS } from './normal/topics.js';
+import { TOPICS_PM } from './pokemon/topics.js';
+import { TOPICS_NINJAGO } from './ninjago/topics.js';
 
 const ALL_CATEGORIES = {
     normal: createCategoryStructure(NORMAL_TOPICS, 'normal'),
@@ -57,7 +57,4 @@ function createCategoryStructure(topics, categoryName) {
     }));
 }
 
-module.exports = {
-    ALL_CATEGORIES,
-    ALL_ENTITIES
-};
+export { ALL_CATEGORIES, ALL_ENTITIES };

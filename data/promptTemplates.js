@@ -8,7 +8,7 @@
  * @param {number} maxLength - Maximum length of the story
  * @returns {string} Formatted story prompt
  */
-function generateStoryPrompt(title, characterDescriptions, topicName, age, minLength, maxLength) {
+export function generateStoryPrompt(title, characterDescriptions, topicName, age, minLength, maxLength) {
     const ageDescription = age === 8 ? '8-year-old' : `${age}-year-old`;
 
     return `Create a fun, educational, and age-appropriate complete story specifically designed for ${ageDescription} children about "${title}" featuring these characters:
@@ -42,7 +42,7 @@ Start the story with an attention-grabbing opening and make sure to include all 
  * @param {number} maxLength - Maximum length of the story
  * @returns {string} Formatted Pokémon flight battle story prompt
  */
-function generatePokemonFlightStory(title, characterDescriptions, topicName, age, minLength, maxLength) {
+export function generatePokemonFlightStory(title, characterDescriptions, topicName, age, minLength, maxLength) {
     // Ensure all parameters have valid defaults
     title = title || 'Pokémon Adventure';
     characterDescriptions = characterDescriptions || 'a brave Pokémon trainer and their Pokémon';
@@ -103,10 +103,8 @@ Aerial Combat Focus:
    - Include 2-3 key battle moments
    - Show the unique personalities of each Pokémon
 
-Create an engaging narrative that makes the reader feel the excitement and tension of high-flying Pokémon battles while staying true to the spirit of the Pokémon world.`;
-}
+Create an engaging narrative that makes the reader feel the excitement and tension of high-flying Pokémon battles while staying true to the spirit of the Pokémon world.
 
-module.exports = {
-    generateStoryPrompt,
-    generatePokemonFlightStory
-};
+In Chinese!
+`;
+}

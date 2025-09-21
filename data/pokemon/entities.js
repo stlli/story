@@ -871,4 +871,4 @@ const POKEMON_ENTITIES = [
 ];
 
 // Export the Pokémon entities array for use in other modules
-module.exports = { POKEMON_ENTITIES };
+export { POKEMON_ENTITIES };

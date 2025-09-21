@@ -1,6 +1,8 @@
-const path = require('path');
-const { generateStoryPrompt, generatePokemonFlightStory } = require('../data/promptTemplates');
-const { generateStoryFromPrompt } = require('./llmService');
+import path from 'path';
+import { generateStoryPrompt, generatePokemonFlightStory } from '../data/promptTemplates.js';
+import { generateStoryFromPrompt } from './llmService.js';
+import { ALL_CATEGORIES as allCategories, ALL_ENTITIES as allEntities } from '../data/data.js';
+import { CATEGORY } from './enum.js';
 
 const DEFAULT_AGE = 8;
 const MIN_PROMPT_LENGTH = 300;
@@ -8,9 +10,8 @@ const MAX_PROMPT_LENGTH = 500;
 
 class StoryGenerator {
     constructor() {
-        const { ALL_CATEGORIES, ALL_ENTITIES } = require('../data/data');
-        this.ALL_CATEGORIES = ALL_CATEGORIES;
-        this.ALL_ENTITIES = ALL_ENTITIES;
+        this.ALL_CATEGORIES = allCategories;
+        this.ALL_ENTITIES = allEntities;
     }
     
     getRandomElements(array, count) {
@@ -100,7 +101,6 @@ class StoryGenerator {
         
         // Generate the appropriate story prompt based on category
         let storyPrompt;
-        const { CATEGORY } = require('./enum');
         
         // Handle character descriptions for both old and new entity structures
         const characterDescriptions = selectedEntities.map(entity => {
@@ -193,4 +193,5 @@ class StoryGenerator {
     }
 }
 
-module.exports = new StoryGenerator();
+const storyGenerator = new StoryGenerator();
+export default storyGenerator;
