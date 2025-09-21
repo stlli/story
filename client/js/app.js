@@ -93,6 +93,11 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
         
+        // Pause any ongoing TTS when starting voice recognition
+        if (ttsService && ttsService.isSpeaking) {
+            ttsService.pause();
+        }
+        
         // Request microphone permission first
         navigator.mediaDevices.getUserMedia({ audio: true })
             .then(stream => {
