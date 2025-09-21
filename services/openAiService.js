@@ -1,13 +1,18 @@
 import OpenAI from 'openai';
 
-// Initialize OpenAI client
-if (!process.env.OPENAI_API_KEY) {
-    throw new Error('OPENAI_API_KEY is not set. Please add it to your environment variables.');
-}
+let openai;
 
-const openai = new OpenAI({
-    apiKey: process.env.OPENAI_API_KEY,
-});
+const getOpenAiClient = () => {
+    if (!openai) {
+        if (!process.env.OPENAI_API_KEY) {
+            throw new Error('OPENAI_API_KEY is not set. Please add it to your environment variables.');
+        }
+        openai = new OpenAI({
+            apiKey: process.env.OPENAI_API_KEY,
+        });
+    }
+    return openai;
+};
 
 /**
  * Generates a story using the OpenAI model
@@ -19,7 +24,8 @@ const openai = new OpenAI({
  */
 const generateStoryWithOpenAi = async (prompt, systemMessage, temperature = 0.7, maxTokens = 1000) => {
     try {
-        const response = await openai.chat.completions.create({
+        const client = getOpenAiClient();
+        const response = await client.chat.completions.create({
             model: "gpt-3.5-turbo",
             messages: [
                 { role: "system", content: systemMessage },

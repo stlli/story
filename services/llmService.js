@@ -11,7 +11,7 @@ import { generateStoryWithOpenAi } from './openAiService.js';
  */
 const generateStoryFromPrompt = async (prompt, age, temperature = 0.7, maxLength = 1000) => {
     try {
-        const useOpenAI = true; // Set to true to use OpenAI instead of Gemma
+        const useOpenAI = process.env.NODE_ENV === 'production';
         const systemMessage = `You are a creative children's story writer. Create an engaging story for ${age}-year-olds based on the following details.`;
         
         if (useOpenAI) {

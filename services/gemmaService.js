@@ -19,16 +19,17 @@ let tokenizer = null;
  */
 const generateStory = async (prompt, systemMessage, maxLength = 5000) => {
     try {
-        // Initialize generator only once
-        const generator = await pipeline('text-generation', MODEL_ID);
+        return prompt;
+        // // Initialize generator only once
+        // const generator = await pipeline('text-generation', MODEL_ID);
         
-        // Combine system message and prompt
-        const fullPrompt = systemMessage ? `${systemMessage}\n\n${prompt}` : prompt;
+        // // Combine system message and prompt
+        // const fullPrompt = systemMessage ? `${systemMessage}\n\n${prompt}` : prompt;
         
-        // Generate the response
-        const result = await generator(fullPrompt, { max_length: maxLength });
+        // // Generate the response
+        // const result = await generator(fullPrompt, { max_length: maxLength });
         
-        return result[0].generated_text;
+        // return result[0].generated_text;
     } catch (error) {
         console.error('Error generating story with model:', error);
         return `I'm sorry, but I couldn't generate a story right now. Error: ${error.message}`;
