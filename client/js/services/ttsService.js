@@ -37,17 +37,32 @@ class TTSService {
     // Initialize the environment
     async _initEnvironment() {
         try {
-            // Get the environment from the server
-            const response = await fetch('/api/environment');
-            if (response.ok) {
-                const data = await response.json();
-                this.useOpenAITTS = data.environment === 'production';
-                console.log(`TTS Service: Using ${this.useOpenAITTS ? 'OpenAI TTS' : 'Web TTS'}`);
+            // Check for forceOpenAITTS URL parameter first
+            const urlParams = new URLSearchParams(window.location.search);
+            const forceOpenAITTS = urlParams.get('forceOpenAITTS');
+            
+            if (forceOpenAITTS !== null) {
+                this.useOpenAITTS = forceOpenAITTS === 'true';
+                console.log(`TTS Service: ${this.useOpenAITTS ? 'Forcing OpenAI TTS' : 'Forcing Web TTS'} (from URL parameter)`);
+            } else {
+                // Get the environment from the server if no URL parameter is provided
+                const response = await fetch('/api/environment');
+                if (response.ok) {
+                    const data = await response.json();
+                    this.useOpenAITTS = data.environment === 'production';
+                    console.log(`TTS Service: Using ${this.useOpenAITTS ? 'OpenAI TTS' : 'Web TTS'} (based on environment)`);
+                }
             }
         } catch (error) {
             console.warn('Could not determine environment, falling back to Web TTS', error);
             this.useOpenAITTS = false;
         }
+    }
+    
+    // Set TTS mode explicitly
+    setForceOpenAITTS(force) {
+        this.useOpenAITTS = force === true;
+        console.log(`TTS Service: ${this.useOpenAITTS ? 'Forcing OpenAI TTS' : 'Using default TTS selection'}`);
     }
 
     // Initialize the TTS service

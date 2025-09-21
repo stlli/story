@@ -120,14 +120,26 @@ app.post('/api/generate-prompt', asyncHandler(async (req, res) => {
 // API endpoint to generate a story
 app.post('/api/generate-story', asyncHandler(async (req, res) => {
     console.log('Received generate-story request:', JSON.stringify(req.body, null, 2));
-    const { userPrompt, topicId, entityIds, category = 'normal', age } = req.body;
+    const { 
+        userPrompt, 
+        topicId, 
+        entityIds, 
+        category = 'normal', 
+        age
+    } = req.body;
+    
+    // Get force flags from query parameters
+    const forceOpenAIStory = req.query.forceOpenAIStory === 'true';
+    const forceOpenAITTS = req.query.forceOpenAITTS === 'true';
     
     const result = await storyGenerator.handleGenerateStory({
         userPrompt,
         topicId,
         entityIds,
         category,
-        age: age || 8
+        age: parseInt(age, 10) || 8,
+        forceOpenAIStory: forceOpenAIStory === true,
+        forceOpenAITTS: forceOpenAITTS === true
     });
     
     res.json(result);

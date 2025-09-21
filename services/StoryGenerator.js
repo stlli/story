@@ -159,7 +159,27 @@ class StoryGenerator {
         };
     }
     
-    async handleGenerateStory({ userPrompt, topicId, entityIds, category = 'normal', age = 8 }) {
+    /**
+     * Handles story generation with optional flags to force OpenAI usage
+     * @param {Object} params - Story generation parameters
+     * @param {string} params.userPrompt - The user's story prompt
+     * @param {string} params.topicId - ID of the selected topic
+     * @param {string[]} params.entityIds - Array of entity IDs
+     * @param {string} [params.category=normal] - Story category
+     * @param {number} [params.age=8] - Target age group
+     * @param {boolean} [params.forceOpenAIStory] - Force using OpenAI for story generation
+     * @param {boolean} [params.forceOpenAITTS] - Force using OpenAI for TTS
+     * @returns {Promise<Object>} Generated story and metadata
+     */
+    async handleGenerateStory({ 
+        userPrompt, 
+        topicId, 
+        entityIds, 
+        category = 'normal', 
+        age = 8,
+        forceOpenAIStory = false,
+        forceOpenAITTS = false
+    }) {
         try {
             // First get the basic prompt structure
             const promptData = this.handleGeneratePrompt({
@@ -171,11 +191,11 @@ class StoryGenerator {
             });
             
             // Generate the story using the llmService
-            const generatedStory = await generateStoryFromPrompt(promptData.prompt, age);
+            const story = await generateStoryFromPrompt(promptData.prompt, age, 0.7, 1000, forceOpenAIStory);
             // Return the enhanced result with the generated story
             return {
                 ...promptData,
-                story: generatedStory,
+                story,
                 generated: true
             };
             

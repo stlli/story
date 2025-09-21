@@ -397,8 +397,18 @@ document.addEventListener('DOMContentLoaded', function() {
             const ageInput = document.getElementById('age-input');
             const age = parseInt(ageInput.value) || 8; // Default to 8 if not set
             
+            // Get force flags from URL parameters
+            const urlParams = new URLSearchParams(window.location.search);
+            const forceOpenAIStory = urlParams.get('forceOpenAIStory') === 'true';
+            const forceOpenAITTS = urlParams.get('forceOpenAITTS') === 'true';
+            
+            // Build the API URL with query parameters
+            const apiUrl = new URL('/api/generate-story', window.location.origin);
+            if (forceOpenAIStory) apiUrl.searchParams.append('forceOpenAIStory', 'true');
+            if (forceOpenAITTS) apiUrl.searchParams.append('forceOpenAITTS', 'true');
+            
             // Use the full selectedTopic as the topicId
-            const response = await fetch('/api/generate-story', {
+            const response = await fetch(apiUrl.toString(), {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
