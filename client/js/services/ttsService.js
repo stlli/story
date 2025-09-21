@@ -3,20 +3,61 @@ class TTSService {
         this.isSpeaking = false;
         this.isPaused = false;
         this.currentUtterance = null;
+        this.audio = new Audio();
         this.charIndex = 0;
         this.fullText = '';
         this.lastWordTime = Date.now();
         this.speechSynthesis = window.speechSynthesis;
         this.onStateChange = null;
+        
+        // Check if we're in production or development
+        // This will be set when the app initializes
+        this.useOpenAITTS = false; // Default to false until we know the environment
+        this._initEnvironment();
+        
+        // Handle audio end events
+        this.audio.onended = () => {
+            this.isSpeaking = false;
+            this._updateState('ended');
+        };
+        
+        this.audio.onerror = (error) => {
+            console.error('TTS Audio Error:', error);
+            this.isSpeaking = false;
+            this._updateState('error', { error: 'Audio playback failed' });
+            // Fall back to browser TTS if OpenAI TTS fails
+            if (this.useOpenAITTS) {
+                console.log('Falling back to browser TTS');
+                this.useOpenAITTS = false;
+                this.speak(this.fullText, this.onStateChange);
+            }
+        };
+    }
+
+    // Initialize the environment
+    async _initEnvironment() {
+        try {
+            // Get the environment from the server
+            const response = await fetch('/api/environment');
+            if (response.ok) {
+                const data = await response.json();
+                this.useOpenAITTS = data.environment === 'production';
+                console.log(`TTS Service: Using ${this.useOpenAITTS ? 'OpenAI TTS' : 'Web TTS'}`);
+            }
+        } catch (error) {
+            console.warn('Could not determine environment, falling back to Web TTS', error);
+            this.useOpenAITTS = false;
+        }
     }
 
     // Initialize the TTS service
     init() {
         // Any initialization code can go here
+        this._initEnvironment().catch(console.error);
     }
 
     // Speak the provided text
-    speak(text, onStateChange = null) {
+    async speak(text, onStateChange = null) {
         if (this.isPaused) {
             this.resume();
             return;
@@ -30,16 +71,65 @@ class TTSService {
         this.fullText = text;
         this.charIndex = 0;
         this.onStateChange = onStateChange;
-        this._speakChunk(this.fullText);
+
+        if (this.useOpenAITTS) {
+            await this._speakWithOpenAI(text);
+        } else {
+            this._speakWithBrowser(text);
+        }
+    }
+
+    // Use OpenAI TTS
+    async _speakWithOpenAI(text) {
+        try {
+            this.isSpeaking = true;
+            this._updateState('speaking');
+            
+            const response = await fetch('/api/generate-speech', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    text,
+                    voice: 'alloy',
+                    speed: 1.0
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            const audioBlob = await response.blob();
+            const audioUrl = URL.createObjectURL(audioBlob);
+            
+            this.audio.src = audioUrl;
+            await this.audio.play();
+            
+        } catch (error) {
+            console.error('Error with OpenAI TTS, falling back to browser TTS:', error);
+            this.useOpenAITTS = false;
+            this._speakWithBrowser(text);
+        }
+    }
+
+    // Use browser's built-in TTS
+    _speakWithBrowser(text) {
+        this._speakChunk(text);
     }
 
     // Pause the current speech
     pause() {
         if (!this.isSpeaking) return;
         
-        this.speechSynthesis.cancel();
-        this.isSpeaking = false;
-        this.isPaused = true;
+        if (this.useOpenAITTS) {
+            this.audio.pause();
+            this.isPaused = true;
+            this.isSpeaking = false;
+        } else {
+            this.speechSynthesis.cancel();
+        }
         this._updateState('paused');
     }
 
@@ -47,14 +137,30 @@ class TTSService {
     resume() {
         if (!this.isPaused) return;
 
-        const remainingText = this.fullText.substring(this.charIndex);
-        this._speakChunk(remainingText);
-        this.isPaused = false;
+        if (this.useOpenAITTS) {
+            this.audio.play().then(() => {
+                this.isPaused = false;
+                this.isSpeaking = true;
+                this._updateState('speaking');
+            }).catch(error => {
+                console.error('Error resuming TTS:', error);
+                this._updateState('error', { error: 'Failed to resume speech' });
+            });
+        } else {
+            const remainingText = this.fullText.substring(this.charIndex);
+            this._speakChunk(remainingText);
+            this.isPaused = false;
+        }
     }
 
     // Stop the current speech
     stop() {
-        this.speechSynthesis.cancel();
+        if (this.useOpenAITTS) {
+            this.audio.pause();
+            this.audio.currentTime = 0;
+        } else {
+            this.speechSynthesis.cancel();
+        }
         this.isSpeaking = false;
         this.isPaused = false;
         this._updateState('stopped');

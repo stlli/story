@@ -6,6 +6,7 @@ import express from 'express';
 import path from 'path';
 import cors from 'cors';
 import storyGenerator from './services/StoryGenerator.js';
+import { generateSpeech } from './services/openaiTtsService.js';
 import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -33,9 +34,16 @@ app.use((req, res, next) => {
     next();
 });
 
-// Serve the main page
+// Serve the main page with environment variable
 app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'client', 'index.html'));
+    // Inject environment variable into the HTML
+    const htmlPath = path.join(__dirname, 'client', 'index.html');
+    res.sendFile(htmlPath, {
+        headers: {
+            'Cache-Control': 'no-store',
+            'X-Environment': process.env.NODE_ENV || 'development'
+        }
+    });
 });
 
 // API endpoint to get categories with their topics based on story type
@@ -43,6 +51,13 @@ app.get('/api/categories', (req, res) => {
     const categoryType = req.query.category || 'normal';
     const categories = storyGenerator.handleGetCategories(categoryType);
     res.json(categories);
+});
+
+// API endpoint to get environment information
+app.get('/api/environment', (req, res) => {
+    res.json({
+        environment: process.env.NODE_ENV || 'development'
+    });
 });
 
 // API endpoint to get all topics (flattened, for backward compatibility)
@@ -116,6 +131,32 @@ app.post('/api/generate-story', asyncHandler(async (req, res) => {
     });
     
     res.json(result);
+}));
+
+// API endpoint to generate speech using OpenAI TTS
+app.post('/api/generate-speech', asyncHandler(async (req, res) => {
+    const { text, voice = 'alloy', speed = 1.0 } = req.body;
+    
+    if (!text) {
+        return res.status(400).json({ error: 'Text is required' });
+    }
+
+    try {
+        const audioBuffer = await generateSpeech(text, { voice, speed });
+        
+        res.set({
+            'Content-Type': 'audio/mpeg',
+            'Transfer-Encoding': 'chunked'
+        });
+        
+        res.send(Buffer.from(audioBuffer));
+    } catch (error) {
+        console.error('Error generating speech:', error);
+        res.status(500).json({ 
+            error: 'Failed to generate speech',
+            details: error.message 
+        });
+    }
 }));
 
 // Start the server
