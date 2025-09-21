@@ -29,11 +29,17 @@ document.addEventListener('DOMContentLoaded', function() {
                 const transcript = event.results[0][0].transcript;
                 promptInput.value = transcript;
                 speechStatus.textContent = 'Voice input received';
+                
+                // Auto-submit the form after a short delay
                 setTimeout(() => {
                     if (speechStatus.textContent === 'Voice input received') {
-                        speechStatus.textContent = '';
+                        speechStatus.textContent = 'Generating story...';
+                        // Trigger the generate story function
+                        if (generateBtn && !generateBtn.disabled) {
+                            generateStory();
+                        }
                     }
-                }, 3000);
+                }, 1000); // 1 second delay to show the received message
             } catch (error) {
                 console.error('Error processing speech result:', error);
                 speechStatus.textContent = 'Error processing voice input. Please try again.';
@@ -55,7 +61,9 @@ document.addEventListener('DOMContentLoaded', function() {
         
         recognition.onsoundend = () => {
             // Sound stopped, but recognition might still be processing
-            speechStatus.textContent = 'Processing your voice...';
+            if (speechStatus.textContent === 'Listening... Speak now!') {
+                speechStatus.textContent = 'Processing your voice...';
+            }
         };
         
         recognition.onend = () => {
@@ -373,6 +381,9 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
 
+        // Stop any ongoing speech when generating a new story
+        ttsService.stop();
+        
         generateBtn.disabled = true;
         generateBtn.textContent = 'Generating...';
         resultDiv.innerHTML = '<div class="loading">Crafting your story... <div class="spinner"></div></div>';
@@ -457,6 +468,7 @@ document.addEventListener('DOMContentLoaded', function() {
             // Initialize TTS
             const ttsBtn = resultDiv.querySelector('.tts-btn');
             const ttsText = ttsBtn.querySelector('.tts-text');
+            const promptContent = resultDiv.querySelector('.prompt-content').textContent;
             
             // Handle TTS state changes
             const handleTTSState = (state) => {
@@ -496,9 +508,17 @@ document.addEventListener('DOMContentLoaded', function() {
             
             // Toggle TTS on button click
             ttsBtn.addEventListener('click', () => {
-                const promptContent = resultDiv.querySelector('.prompt-content').textContent;
                 ttsService.speak(promptContent, handleTTSState);
             });
+            
+            // Auto-start TTS if enabled in settings
+            const autoReadEnabled = localStorage.getItem('autoRead') !== 'false'; // Default to true
+            if (autoReadEnabled) {
+                // Small delay to ensure the UI is updated
+                setTimeout(() => {
+                    ttsService.speak(promptContent, handleTTSState);
+                }, 500);
+            }
             
             // Stop TTS when navigating away
             window.addEventListener('beforeunload', () => {
