@@ -2,6 +2,29 @@
 import { ttsService } from './services/ttsService.js';
 
 document.addEventListener('DOMContentLoaded', function() {
+    // Global pointer down listener for pen input
+    document.addEventListener('pointerdown', function(event) {
+        // Check if the pointer is a pen and only one button is pressed
+        if (event.pointerType === 'pen' && event.buttons === 1) {
+            // Prevent default to avoid any unwanted behavior
+            event.preventDefault();
+            
+            // Get the speech button if it exists
+            const speechBtn = document.getElementById('speech-btn');
+            if (speechBtn && typeof toggleSpeechRecognition === 'function') {
+                // Add visual feedback
+                speechBtn.classList.add('pen-active');
+                
+                // Trigger the speech recognition
+                toggleSpeechRecognition();
+                
+                // Remove visual feedback after a short delay
+                setTimeout(() => {
+                    speechBtn.classList.remove('pen-active');
+                }, 200);
+            }
+        }
+    });
     const promptInput = document.getElementById('prompt');
     const generateBtn = document.getElementById('generate-btn');
     const resultDiv = document.getElementById('result');
