@@ -25,6 +25,9 @@ const port = process.env.PORT || 3000;
 // Middleware
 app.use(express.json());
 app.use(express.static('client'));
+// Serve public files from root
+app.use(express.static(path.join(__dirname, 'public')));
+// Also keep the /public prefix for backward compatibility
 app.use('/public', express.static(path.join(__dirname, 'public')));
 app.use(cors());
 

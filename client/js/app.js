@@ -99,11 +99,34 @@ document.addEventListener('DOMContentLoaded', function() {
         };
         
         // Add click event listener to the speech button
-        speechBtn.addEventListener('click', toggleSpeechRecognition);
+        speechBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            toggleSpeechRecognition();
+        });
+        
+        // Add event listener for when speech is detected
+        if (recognition) {
+            recognition.onspeechstart = () => {
+                // Stop the prompt sound when speech is detected
+                if (promptSound) {
+                    promptSound.pause();
+                    promptSound.currentTime = 0;
+                }
+                // Remove any pending sound end handlers
+                if (soundEndHandler) {
+                    promptSound.removeEventListener('ended', soundEndHandler);
+                    soundEndHandler = null;
+                }
+            };
+        }
     } else {
         // Hide the speech button if not supported
         speechBtn.style.display = 'none';
     }
+    
+    // Get the audio element
+    const promptSound = document.getElementById('promptSound');
+    let soundEndHandler = null;
     
     // Toggle speech recognition on/off
     function toggleSpeechRecognition() {
@@ -113,6 +136,11 @@ document.addEventListener('DOMContentLoaded', function() {
             recognition.stop();
             speechBtn.classList.remove('listening');
             speechStatus.textContent = 'Voice input stopped';
+            // Stop the prompt sound if it's playing
+            if (promptSound) {
+                promptSound.pause();
+                promptSound.currentTime = 0;
+            }
             return;
         }
         
@@ -121,31 +149,83 @@ document.addEventListener('DOMContentLoaded', function() {
             ttsService.pause();
         }
         
-        // Request microphone permission first
-        navigator.mediaDevices.getUserMedia({ audio: true })
-            .then(stream => {
-                // Stop any existing tracks to release the microphone
-                stream.getTracks().forEach(track => track.stop());
-                
-                try {
-                    recognition.start();
-                    speechBtn.classList.add('listening');
-                    speechStatus.textContent = 'Listening... Speak now!';
-                } catch (error) {
-                    console.error('Error starting speech recognition:', error);
-                    handleRecognitionError(error);
-                }
-            })
-            .catch(error => {
-                console.error('Microphone access denied:', error);
-                speechStatus.innerHTML = `
-                    Microphone access is required for voice input. 
-                    <br>Please enable microphone permissions in your browser settings.
-                    <br><a href="https://support.google.com/chrome/answer/2693767" target="_blank" style="color: #3498db; text-decoration: underline;">
-                        How to enable microphone access
-                    </a>
-                `;
-            });
+        // Function to start recognition after audio has finished playing
+        const startRecognitionAfterAudio = () => {
+            if (promptSound) {
+                // Wait for the audio to finish playing
+                const onEnded = () => {
+                    promptSound.removeEventListener('ended', onEnded);
+                    startRecognition();
+                };
+                promptSound.addEventListener('ended', onEnded);
+            } else {
+                // If no sound element, start recognition immediately
+                startRecognition();
+            }
+        };
+
+        // Play the prompt sound if available
+        if (promptSound) {
+            // Reset the audio to the start in case it was paused
+            promptSound.currentTime = 0;
+            
+            // Play the sound
+            const playPromise = promptSound.play();
+            
+            if (playPromise !== undefined) {
+                playPromise
+                    .then(() => {
+                        // Audio is playing, wait for it to finish before starting recognition
+                        startRecognitionAfterAudio();
+                    })
+                    .catch(error => {
+                        console.error('Error playing prompt sound:', error);
+                        // If sound fails to play, start recognition immediately
+                        startRecognition();
+                    });
+            } else {
+                // If play() doesn't return a promise (older browsers)
+                promptSound.onplaying = () => {
+                    startRecognitionAfterAudio();
+                };
+                promptSound.onerror = (error) => {
+                    console.error('Error playing prompt sound:', error);
+                    startRecognition();
+                };
+            }
+        } else {
+            // If no sound element, start recognition immediately
+            startRecognition();
+        }
+        
+        // Function to start the actual recognition
+        function startRecognition() {
+            // Request microphone permission
+            navigator.mediaDevices.getUserMedia({ audio: true })
+                .then(stream => {
+                    // Stop any existing tracks to release the microphone
+                    stream.getTracks().forEach(track => track.stop());
+                    
+                    try {
+                        recognition.start();
+                        speechBtn.classList.add('listening');
+                        speechStatus.textContent = 'Listening... Speak now!';
+                    } catch (error) {
+                        console.error('Error starting speech recognition:', error);
+                        handleRecognitionError(error);
+                    }
+                })
+                .catch(error => {
+                    console.error('Microphone access denied:', error);
+                    speechStatus.innerHTML = `
+                        Microphone access is required for voice input. 
+                        <br>Please enable microphone permissions in your browser settings.
+                        <br><a href="https://support.google.com/chrome/answer/2693767" target="_blank" style="color: #3498db; text-decoration: underline;">
+                            How to enable microphone access
+                        </a>
+                    `;
+                });
+        }
     }
     
     function handleRecognitionError(error) {
