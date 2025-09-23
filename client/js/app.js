@@ -450,14 +450,42 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
+    // Keep track of the currently playing audio
+    let currentAudio = null;
+    
     // Toggle entity selection
     function toggleEntity(entityId) {
         const index = selectedEntities.indexOf(entityId);
+        const entity = entities.find(e => e.id === entityId);
+        
         if (index > -1) {
+            // Unselecting the character
             selectedEntities.splice(index, 1);
+            
+            // Pause and reset the audio if it's playing
+            if (currentAudio) {
+                currentAudio.pause();
+                currentAudio.currentTime = 0;
+                currentAudio = null;
+            }
         } else {
             if (selectedEntities.length < MAX_ENTITIES) {
                 selectedEntities.push(entityId);
+                
+                // Play the character's audio if available
+                if (entity?.character?.audio) {
+                    // Stop any currently playing audio
+                    if (currentAudio) {
+                        currentAudio.pause();
+                        currentAudio.currentTime = 0;
+                    }
+                    
+                    // Create and play the new audio
+                    currentAudio = new Audio(entity.character.audio);
+                    currentAudio.play().catch(error => {
+                        console.error('Error playing character audio:', error);
+                    });
+                }
             } else {
                 alert(`You can select up to ${MAX_ENTITIES} characters.`);
             }

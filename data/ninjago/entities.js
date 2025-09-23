@@ -8,6 +8,7 @@ const NINJAGO_ENTITIES = [
       "age": "20",
       "role": "Ninja of Fire",
       "image": "/public/images/entities/Kai.png",
+      "audio": "/voices/ninjago/kai.mp3",
       "physical_attributes": {
         "defining_feature": "Red ninja gi with flame patterns",
         "clothing_style": "Traditional ninja attire with red and black color scheme",
@@ -66,6 +67,7 @@ const NINJAGO_ENTITIES = [
       "age": "19",
       "role": "Ninja of Lightning",
       "image": "/public/images/entities/Jay.png",
+      "audio": "/voices/ninjago/jay.mp3",
       "physical_attributes": {
         "defining_feature": "Blue ninja gi with lightning bolt patterns",
         "clothing_style": "Sleek ninja attire with blue and white color scheme",
@@ -124,6 +126,7 @@ const NINJAGO_ENTITIES = [
       "age": "Unknown (appears 20s)",
       "role": "Ninja of Ice",
       "image": "/public/images/entities/Zane.png",
+      "audio": "/voices/ninjago/zane.mp3",
       "physical_attributes": {
         "defining_feature": "White and silver robotic body with glowing blue circuits",
         "clothing_style": "White ninja gi with silver and light blue accents",
@@ -182,6 +185,7 @@ const NINJAGO_ENTITIES = [
       "age": "21",
       "role": "Ninja of Earth",
       "image": "/public/images/entities/Cole.png",
+      "audio": "/voices/ninjago/cole.mp3",
       "physical_attributes": {
         "defining_feature": "Black ninja gi with earth and mountain motifs",
         "clothing_style": "Heavy-set ninja attire with black and dark gray colors",
@@ -240,6 +244,7 @@ const NINJAGO_ENTITIES = [
       "age": "19",
       "role": "Ninja of Water/Samurai X",
       "image": "/public/images/entities/Nya.png",
+      "audio": "/voices/ninjago/nya.mp3",
       "physical_attributes": {
         "defining_feature": "Blue ninja gi with wave patterns (as Samurai X: silver and pink armor)",
         "clothing_style": "Sleek ninja attire with blue and white colors (as Samurai X: high-tech armor)",
