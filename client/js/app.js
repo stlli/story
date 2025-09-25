@@ -1,7 +1,59 @@
 // Import TTS Service
 import { ttsService } from './services/ttsService.js';
 
+// Screen Wake Lock API
+let wakeLock = null;
+
+// Function to request screen wake lock
+async function requestWakeLock() {
+    try {
+        if ('wakeLock' in navigator) {
+            wakeLock = await navigator.wakeLock.request('screen');
+            console.log('Screen Wake Lock is active');
+            
+            // Listen for release (happens when the document becomes inactive or the lock is released manually)
+            wakeLock.addEventListener('release', () => {
+                console.log('Screen Wake Lock was released');
+            });
+        }
+    } catch (err) {
+        console.error(`${err.name}, ${err.message}`);
+    }
+}
+
+// Function to release the wake lock
+function releaseWakeLock() {
+    if (wakeLock !== null) {
+        wakeLock.release()
+            .then(() => {
+                wakeLock = null;
+                console.log('Screen Wake Lock released');
+            });
+    }
+}
+
+// Request wake lock when the page becomes visible again
+function handleVisibilityChange() {
+    if (document.visibilityState === 'visible') {
+        requestWakeLock();
+    } else {
+        releaseWakeLock();
+    }
+}
+
+document.addEventListener('visibilitychange', handleVisibilityChange);
+
 document.addEventListener('DOMContentLoaded', function() {
+    // Request wake lock when the page loads
+    requestWakeLock();
+    
+    // Also set up a periodic check to re-request the wake lock if it's released
+    // (some browsers might release it after a while)
+    setInterval(() => {
+        if (document.visibilityState === 'visible' && !wakeLock) {
+            requestWakeLock();
+        }
+    }, 30000); // Check every 30 seconds
     // Global pointer down listener for pen input
     document.addEventListener('pointerdown', function(event) {
         // Check if the pointer is a pen and only one button is pressed
