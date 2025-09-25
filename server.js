@@ -5,8 +5,11 @@ if (process.env.NODE_ENV !== 'production') {
 import express from 'express';
 import path from 'path';
 import cors from 'cors';
+import { WebSocketServer } from 'ws';
+import http from 'http';
 import storyGenerator from './services/StoryGenerator.js';
 import { generateSpeech } from './services/openaiTtsService.js';
+import { generateStreamingStory } from './services/llmService.js';
 import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -20,7 +23,207 @@ const asyncHandler = fn => (req, res, next) => {
 };
 
 const app = express();
+const server = http.createServer(app);
 const port = process.env.PORT || 3000;
+
+// Create a separate HTTP server for WebSocket
+const wsServer = http.createServer();
+const wsPort = 3001; // Different port for WebSocket
+
+// WebSocket server for WebRTC signaling
+const wss = new WebSocketServer({ 
+    server: wsServer, // Use the separate server for WebSocket
+    clientTracking: true,
+    perMessageDeflate: false // Disable compression for now to rule out compression issues
+});
+
+// Start WebSocket server
+wsServer.listen(wsPort, '0.0.0.0', () => {
+    console.log(`WebSocket server is running on ws://localhost:${wsPort}`);
+});
+
+// Add CORS middleware for Express
+app.use((req, res, next) => {
+    res.header('Access-Control-Allow-Origin', '*');
+    res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
+    next();
+});
+
+// Store active connections
+const connections = new Map();
+
+// WebSocket connection handler
+wss.on('connection', (ws) => {
+    console.log('New WebSocket connection');
+    
+    // Generate a unique ID for this connection
+    const connectionId = Date.now().toString();
+    const connection = { ws, id: connectionId };
+    connections.set(connectionId, connection);
+    console.log(`Client connected: ${connectionId}`);
+    
+    // Send connection ID to client
+    const welcomeMessage = {
+        type: 'connection',
+        connectionId: connectionId
+    };
+    
+    ws.send(JSON.stringify(welcomeMessage));
+    
+    // Handle incoming messages
+    const handleMessage = async (message) => {
+        try {
+            const data = JSON.parse(message);
+            console.log('Received message:', data);
+            
+            // Handle different message types
+            if (data.type === 'offer' || data.type === 'answer' || data.type === 'candidate') {
+                // Forward the message to the target peer
+                const target = connections.get(data.target);
+                if (target && target.ws) {
+                    target.ws.send(JSON.stringify({
+                        ...data,
+                        sender: connectionId
+                    }));
+                } else {
+                    console.error(`Target connection not found: ${data.target}`);
+                    // Notify the sender that the target is not available
+                    ws.send(JSON.stringify({
+                        type: 'error',
+                        message: `Target peer ${data.target} not found`
+                    }));
+                }
+            } else if (data.type === 'rtc') {
+                // Forward WebRTC signaling messages to the target peer
+                if (data.target && connections.has(data.target)) {
+                    const target = connections.get(data.target);
+                    if (target && target.ws) {
+                        target.ws.send(JSON.stringify({
+                            type: 'rtc',
+                            from: connectionId,
+                            data: data.data
+                        }));
+                    }
+                }
+            } else if (data.type === 'generateStory') {
+                // Handle story generation request
+                console.log('Generating story with data:', JSON.stringify(data, null, 2));
+                try {
+                    // Destructure with defaults that match our client interface
+                    const { 
+                        userPrompt = '',
+                        topicId = undefined,
+                        entityIds: rawEntityIds = [],
+                        category = 'normal',
+                        age = 8,
+                        forceOpenAITTS,
+                        forceOpenAIStory
+                    } = data;
+
+                    // Validate required fields - either userPrompt or topicId is required
+                    if (!userPrompt && !topicId) {
+                        throw new Error('Either a prompt or a topic is required');
+                    }
+
+                    // Process entity IDs (ensure they're strings and not empty)
+                    const entityIds = Array.isArray(rawEntityIds) 
+                        ? rawEntityIds.map(id => String(id).trim()).filter(Boolean)
+                        : [];
+
+                    if (entityIds.length === 0) {
+                        throw new Error('At least one character must be selected');
+                    }
+
+                    // Track if we've sent any chunks
+                    let hasSentChunks = false;
+                    let fullStory = '';
+                    
+                    // Call the story generation service with streaming support
+                    const story = await storyGenerator.handleGenerateStory({
+                        userPrompt,
+                        topicId,
+                        entityIds,
+                        category,
+                        age: parseInt(age) || 8,
+                        forceOpenAITTS,
+                        forceOpenAIStory,
+                        onChunk: (chunk) => {
+                            hasSentChunks = true;
+                            fullStory += chunk;
+                            
+                            // Send the chunk to the client
+                            try {
+                                ws.send(JSON.stringify({
+                                    type: 'storyChunk',
+                                    chunk: chunk,
+                                    isFinal: false
+                                }));
+                            } catch (error) {
+                                console.error('Error sending story chunk:', error);
+                            }
+                        }
+                    });
+                    
+                    // If no chunks were sent (non-streaming fallback), send the full story
+                    if (!hasSentChunks) {
+                        ws.send(JSON.stringify({
+                            type: 'storyGenerated',
+                            story: story
+                        }));
+                    } else {
+                        // Send final chunk with isFinal flag
+                        ws.send(JSON.stringify({
+                            type: 'storyChunk',
+                            chunk: '',
+                            isFinal: true,
+                            fullStory: story.story || story
+                        }));
+                    }
+                } catch (error) {
+                    console.error('Error generating story:', error);
+                    ws.send(JSON.stringify({
+                        type: 'error',
+                        message: 'Failed to generate story: ' + (error.message || 'Unknown error')
+                    }));
+                }
+            } else {
+                console.warn('Unknown message type:', data.type);
+                ws.send(JSON.stringify({
+                    type: 'error',
+                    message: `Unknown message type: ${data.type}`
+                }));
+            }
+        } catch (error) {
+            console.error('Error processing message:', error);
+            ws.send(JSON.stringify({
+                type: 'error',
+                message: 'Error processing message: ' + error.message
+            }));
+        }
+    };
+    
+    // Handle client disconnection
+    const handleClose = () => {
+        console.log(`Client disconnected: ${connectionId}`);
+        connections.delete(connectionId);
+        // Clean up event listeners
+        ws.off('message', handleMessage);
+        ws.off('close', handleClose);
+        ws.off('error', handleError);
+    };
+    
+    // Handle errors
+    const handleError = (error) => {
+        console.error('WebSocket error:', error);
+        connections.delete(connectionId);
+        ws.terminate();
+    };
+    
+    // Set up event listeners
+    ws.on('message', handleMessage);
+    ws.on('close', handleClose);
+    ws.on('error', handleError);
+});
 
 // Middleware
 app.use(express.json());

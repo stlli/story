@@ -140,11 +140,11 @@ class TTSService {
         
         if (this.useOpenAITTS) {
             this.audio.pause();
-            this.isPaused = true;
-            this.isSpeaking = false;
         } else {
             this.speechSynthesis.cancel();
         }
+        this.isPaused = true;
+        this.isSpeaking = false;
         this._updateState('paused');
     }
 

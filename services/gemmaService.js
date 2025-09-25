@@ -19,7 +19,7 @@ let tokenizer = null;
  */
 const generateStory = async (prompt, systemMessage, maxLength = 5000) => {
     try {
-        return prompt;
+        return 'Create a fun, educational, and age-appropriate complete story specifically designed for 8-year-old children about "Imagination: Fantasy Realms and testing testing" featuring these characters:';
         // // Initialize generator only once
         // const generator = await pipeline('text-generation', MODEL_ID);
         

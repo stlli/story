@@ -1,5 +1,6 @@
-// Import TTS Service
+// Import Services
 import { ttsService } from './services/ttsService.js';
+import { webrtcService } from './services/webrtcService.js';
 
 // Screen Wake Lock API
 let wakeLock = null;
@@ -43,9 +44,110 @@ function handleVisibilityChange() {
 
 document.addEventListener('visibilitychange', handleVisibilityChange);
 
-document.addEventListener('DOMContentLoaded', function() {
-    // Request wake lock when the page loads
+// Parse URL parameters
+function getUrlParams() {
+    const params = new URLSearchParams(window.location.search);
+    return {
+        forceOpenAIStory: params.get('forceOpenAIStory') === 'true',
+        forceOpenAITTS: params.get('forceOpenAITTS') === 'true'
+    };
+}
+
+// Get URL parameters at the module level
+const urlParams = getUrlParams();
+
+document.addEventListener('DOMContentLoaded', async function() {
     requestWakeLock();
+    
+    // Initialize WebRTC service with proper handlers
+    try {
+        await webrtcService.init();
+        
+        // Set up chunk handler
+        webrtcService.onChunk = (chunk) => {
+            try {
+                console.log('Received chunk:', chunk);
+                const resultDiv = document.getElementById('result');
+                if (!resultDiv) return;
+                
+                // Hide loading indicator if it exists
+                const loadingEl = resultDiv.querySelector('.loading');
+                if (loadingEl) {
+                    loadingEl.style.display = 'none';
+                }
+                
+                const storyContainer = resultDiv.querySelector('#story-container');
+                const storyContent = resultDiv.querySelector('.story-content');
+                
+                if (storyContent) {
+                    // Format the chunk for display
+                    const formattedChunk = String(chunk)
+                        .replace(/\n/g, '<br>')
+                        .replace(/\s{4,}/g, '    ');
+                    
+                    storyContent.insertAdjacentHTML('beforeend', formattedChunk);
+                    
+                    // Auto-scroll to the bottom
+                    if (storyContainer) {
+                        storyContainer.scrollTop = storyContainer.scrollHeight;
+                    }
+                }
+            } catch (error) {
+                console.error('Error processing chunk:', error);
+            }
+        };
+        
+        // Set up status handler
+        webrtcService.onStatus = (status) => {
+            console.log('Status:', status);
+            const resultDiv = document.getElementById('result');
+            const generateBtn = document.getElementById('generate-btn');
+            
+            if (!resultDiv || !generateBtn) return;
+            
+            if (status === 'complete') {
+                // Update button state when generation is complete
+                generateBtn.disabled = false;
+                generateBtn.textContent = 'Generate New Story';
+                
+                // Remove loading indicator if it's still there
+                const loadingEl = resultDiv.querySelector('.loading');
+                if (loadingEl) {
+                    loadingEl.style.display = 'none';
+                }
+                
+                // Ensure story container is visible
+                const storyContainer = resultDiv.querySelector('#story-container');
+                if (storyContainer) {
+                    storyContainer.style.display = 'block';
+                }
+            }
+        };
+        
+        // Set up error handler
+        webrtcService.onError = (error) => {
+            console.error('Error:', error);
+            const resultDiv = document.getElementById('result');
+            const generateBtn = document.getElementById('generate-btn');
+            
+            if (generateBtn) {
+                generateBtn.disabled = false;
+                generateBtn.textContent = 'Generate Story';
+            }
+            
+            if (resultDiv) {
+                const errorEl = document.createElement('div');
+                errorEl.className = 'error-message';
+                errorEl.textContent = `Error: ${error.message || error}`;
+                resultDiv.appendChild(errorEl);
+            }
+            
+            alert(`An error occurred: ${error.message || error}`);
+        };
+    } catch (error) {
+        console.error('Failed to initialize WebRTC:', error);
+        alert('Failed to initialize the connection. Please refresh the page.');
+    }
     
     // Also set up a periodic check to re-request the wake lock if it's released
     // (some browsers might release it after a while)
@@ -425,7 +527,8 @@ document.addEventListener('DOMContentLoaded', function() {
         entitySelection.innerHTML = '';
         
         entities.forEach(entity => {
-            const isSelected = selectedEntities.includes(entity.id);
+            // Check if the current entity is in the selectedEntities array by ID
+            const isSelected = selectedEntities.some(selected => selected.id === entity.id);
             const entityElement = document.createElement('div');
             entityElement.className = `entity-card ${isSelected ? 'selected' : ''}`;
             
@@ -507,8 +610,10 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Toggle entity selection
     function toggleEntity(entityId) {
-        const index = selectedEntities.indexOf(entityId);
         const entity = entities.find(e => e.id === entityId);
+        if (!entity) return;
+        
+        const index = selectedEntities.findIndex(e => e.id === entityId);
         
         if (index > -1) {
             // Unselecting the character
@@ -522,7 +627,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         } else {
             if (selectedEntities.length < MAX_ENTITIES) {
-                selectedEntities.push(entityId);
+                selectedEntities.push(entity);
                 
                 // Play the character's audio if available
                 if (entity?.character?.audio) {
@@ -554,7 +659,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
-    // Generate story
+    // Generate story with WebRTC streaming
     async function generateStory() {
         const userPrompt = promptInput?.value?.trim() || '';
         
@@ -572,101 +677,129 @@ document.addEventListener('DOMContentLoaded', function() {
         // Stop any ongoing speech when generating a new story
         ttsService.stop();
         
+        const generateBtn = document.getElementById('generate-btn');
+        const resultDiv = document.getElementById('result');
+        
         generateBtn.disabled = true;
         generateBtn.textContent = 'Generating...';
-        resultDiv.innerHTML = '<div class="loading">Crafting your story... <div class="spinner"></div></div>';
-
+        
+        // Clear previous content and show loading state
+        resultDiv.style.display = 'block';
+        resultDiv.scrollIntoView({ behavior: 'smooth' });
+        resultDiv.innerHTML = `
+            <div class="loading">
+                <div class="spinner"></div>
+                <p>Crafting your story...</p>
+            </div>
+            <div id="story-container" class="story-container">
+                <div class="story-content"></div>
+            </div>
+        `;
+        
+        let fullStory = '';
+        
         try {
             const ageInput = document.getElementById('age-input');
             const age = parseInt(ageInput.value) || 8; // Default to 8 if not set
             
-            // Get force flags from URL parameters
-            const urlParams = new URLSearchParams(window.location.search);
-            const forceOpenAIStory = urlParams.get('forceOpenAIStory') === 'true';
-            const forceOpenAITTS = urlParams.get('forceOpenAITTS') === 'true';
-            
-            // Build the API URL with query parameters
-            const apiUrl = new URL('/api/generate-story', window.location.origin);
-            if (forceOpenAIStory) apiUrl.searchParams.append('forceOpenAIStory', 'true');
-            if (forceOpenAITTS) apiUrl.searchParams.append('forceOpenAITTS', 'true');
-            
-            // Use the full selectedTopic as the topicId
-            const response = await fetch(apiUrl.toString(), {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ 
-                    userPrompt: userPrompt,
-                    age: age,
-                    topicId: selectedTopic || undefined, // Send undefined if no topic is selected
-                    entityIds: selectedEntities,
-                    category: currentCategory
-                })
-            });
-            
-            if (!response.ok) {
-                throw new Error('Network response was not ok');
+            // Build the prompt with selected entities and topic
+            let prompt = userPrompt;
+            if (selectedTopic) {
+                prompt = `${selectedTopic.name}: ${prompt}`.trim();
             }
             
-            const data = await response.json();
+            if (selectedEntities.length > 0) {
+                const entityNames = selectedEntities.map(e => e.name).join(', ');
+                prompt = `Characters: ${entityNames}. ${prompt}`;
+            }
             
-            // Debug log the response data
-            console.log('Response data:', data);
+            // Get the selected topic ID if available
+            const topicId = selectedTopic ? selectedTopic.id : undefined;
             
-            // Handle the response data more robustly
-            const storyContent = data.story || data.prompt || data.structured_prompt || 'No story content received';
-            const storyTopic = data.topic || 'Unknown Topic';
-            const storyAspect = data.aspect || '';
-            const storyCharacters = Array.isArray(data.characters) ? data.characters : [];
+            // Prepare the request data with only the essential fields
+            const requestData = {
+                userPrompt: userPrompt || undefined, // Optional: only include if provided
+                age: parseInt(age) || 8,
+                topicId: selectedTopic || undefined, // Optional: only include if topic is selected
+                entityIds: selectedEntities.map(entity => entity.id), // Array of entity IDs
+                category: currentCategory || 'normal',
+                forceOpenAITTS: urlParams.forceOpenAITTS,
+                forceOpenAIStory: urlParams.forceOpenAIStory,
+            };
             
-            // Format the story content for display
-            const formattedPrompt = String(storyContent)
-                .replace(/\n/g, '<br>')
-                .replace(/\s{4,}/g, '    ');
-            
-            resultDiv.innerHTML = `
-                <h3>
-                    Your Story Prompt:
-                    <div class="action-buttons">
-                        <button class="tts-btn" title="Read story aloud">
-                            <svg class="tts-icon" viewBox="0 0 24 24">
-                                <path d="M3,9H7L12,4V20L7,15H3V9M16.59,12L14,9.41L15.41,8L18,10.59L20.59,8L22,9.41L19.41,12L22,14.59L20.59,16L18,13.41L15.41,16L14,14.59L16.59,12Z" />
-                            </svg>
-                            <span class="tts-text">Read Aloud</span>
-                        </button>
-                        <button class="copy-btn" title="Copy to clipboard">
-                            <svg class="copy-icon" viewBox="0 0 24 24">
-                                <path d="M19,21H8V7H19M19,5H8A2,2 0 0,0 6,7V21A2,2 0 0,0 8,23H19A2,2 0 0,0 21,21V7A2,2 0 0,0 19,5M16,1H4A2,2 0 0,0 2,3V17H4V3H16V1Z" />
-                            </svg>
-                            <span class="copy-text">Copy</span>
-                        </button>
-                    </div>
-                </h3>
-                ${storyTopic ? `<p><strong>Topic:</strong> ${storyTopic}${storyAspect ? ` - ${storyAspect}` : ''}</p>` : ''}
-                ${storyCharacters.length > 0 ? `<p><strong>Characters:</strong> ${storyCharacters.join(', ')}</p>` : ''}
-                <div class="prompt-content">${formattedPrompt}</div>
-            `;
-            
-            // Add copy functionality
-            const copyBtn = resultDiv.querySelector('.copy-btn');
-            copyBtn.addEventListener('click', () => {
-                const promptContent = resultDiv.querySelector('.prompt-content').textContent;
-                navigator.clipboard.writeText(promptContent).then(() => {
-                    const copyText = copyBtn.querySelector('.copy-text');
-                    copyText.textContent = 'Copied!';
-                    copyBtn.classList.add('copied');
-                    setTimeout(() => {
-                        copyText.textContent = 'Copy';
-                        copyBtn.classList.remove('copied');
-                    }, 2000);
-                });
-            });
+            console.log('Sending request data:', JSON.stringify(requestData, null, 2));
 
-            // Initialize TTS
-            const ttsBtn = resultDiv.querySelector('.tts-btn');
+            // Start streaming the story
+            await webrtcService.generateStory(requestData,
+                // onChunk callback
+                (chunk) => {
+                    try {
+                        console.log('Received chunk:', chunk);
+                        // Append the new chunk to the story
+                        fullStory += chunk;
+                        
+                        // Hide loading indicator if it exists
+                        const loadingEl = resultDiv.querySelector('.loading');
+                        if (loadingEl) {
+                            loadingEl.style.display = 'none';
+                        }
+                        
+                        // Format the story content for display
+                        const formattedChunk = chunk
+                            .replace(/\n/g, '<br>')
+                            .replace(/\s{4,}/g, '    ');
+                        
+                        const storyContainer = resultDiv.querySelector('#story-container');
+                        const storyContent = resultDiv.querySelector('.story-content');
+                        // Update the content (using insertAdjacentHTML for better performance)
+                        if (storyContent) {
+                            storyContent.insertAdjacentHTML('beforeend', formattedChunk);
+                            // Auto-scroll to the bottom
+                            storyContainer.scrollTop = storyContainer.scrollHeight;
+                        } else {
+                            console.error('Failed to update story content: storyContent is null');
+                        }
+                    } catch (error) {
+                        console.error('Error updating story content:', error);
+                    }
+                },
+                // onStatus callback
+                (status) => {
+                    console.log('Generation status:', status);
+                    if (status === 'complete') {
+                        // Update button state when generation is complete
+                        generateBtn.disabled = false;
+                        generateBtn.textContent = 'Generate New Story';
+                        
+                        // Remove loading indicator if it's still there
+                        const loadingEl = resultDiv.querySelector('.loading');
+                        if (loadingEl) {
+                            loadingEl.style.display = 'none';
+                        }
+                        
+                        // Add action buttons after generation is complete
+                        const actions = document.createElement('div');
+                        actions.className = 'action-buttons';
+                        actions.innerHTML = `
+                            <button class="tts-btn" title="Read story aloud">
+                                <svg class="tts-icon" viewBox="0 0 24 24">
+                                    <path d="M3,9H7L12,4V20L7,15H3V9M16.59,12L14,9.41L15.41,8L18,10.59L20.59,8L22,9.41L19.41,12L22,14.59L20.59,16L18,13.41L15.41,16L14,14.59L16.59,12Z" />
+                                </svg>
+                                <span class="tts-text">Read Aloud</span>
+                            </button>
+                            <button class="copy-btn" title="Copy to clipboard">
+                                <svg class="copy-icon" viewBox="0 0 24 24">
+                                    <path d="M19,21H8V7H19M19,5H8A2,2 0 0,0 6,7V21A2,2 0 0,0 8,23H19A2,2 0 0,0 21,21V7A2,2 0 0,0 19,5M16,1H4A2,2 0 0,0 2,3V17H4V3H16V1Z" />
+                                </svg>
+                                <span class="copy-text">Copy</span>
+                            </button>
+                        `;
+                        
+                        // Add event listeners for the action buttons
+                                    // Initialize TTS
+            const ttsBtn = actions.querySelector('.tts-btn');
             const ttsText = ttsBtn.querySelector('.tts-text');
-            const promptContent = resultDiv.querySelector('.prompt-content').textContent;
+            const promptContent = resultDiv.querySelector('.story-content').textContent;
             
             // Handle TTS state changes
             const handleTTSState = (state) => {
@@ -708,7 +841,7 @@ document.addEventListener('DOMContentLoaded', function() {
             ttsBtn.addEventListener('click', () => {
                 ttsService.speak(promptContent, handleTTSState);
             });
-            
+
             // Auto-start TTS if enabled in settings
             const autoReadEnabled = localStorage.getItem('autoRead') !== 'false'; // Default to true
             if (autoReadEnabled) {
@@ -717,24 +850,51 @@ document.addEventListener('DOMContentLoaded', function() {
                     ttsService.speak(promptContent, handleTTSState);
                 }, 500);
             }
-            
-            // Stop TTS when navigating away
-            window.addEventListener('beforeunload', () => {
-                ttsService.stop();
-            });
-            
-            resultDiv.style.display = 'block';
+
+                        const copyBtn = actions.querySelector('.copy-btn');
+                        
+                        copyBtn.addEventListener('click', () => {
+                            navigator.clipboard.writeText(fullStory).then(() => {
+                                const copyText = copyBtn.querySelector('.copy-text');
+                                const originalText = copyText.textContent;
+                                copyText.textContent = 'Copied!';
+                                setTimeout(() => {
+                                    copyText.textContent = originalText;
+                                }, 2000);
+                            }).catch(err => {
+                                console.error('Failed to copy text: ', err);
+                            });
+                        });
+                        
+                        // Insert actions after the story content
+                        const storyContainer = resultDiv.querySelector('#story-container');
+                        storyContainer.appendChild(actions);
+                    }
+                },
+                // onError callback
+                (error) => {
+                    console.error('Error generating story:', error);
+                    resultDiv.innerHTML = `
+                        <div class="error">
+                            <p>Failed to generate story. Please try again.</p>
+                            <p><small>${error.message || error}</small></p>
+                        </div>
+                    `;
+                    generateBtn.disabled = false;
+                    generateBtn.textContent = 'Try Again';
+                }
+            );
             
         } catch (error) {
-            console.error('Error:', error);
-            resultDiv.textContent = 'Error generating story. Please try again.';
-            resultDiv.style.display = 'block';
-        } finally {
-            // Reset button state
-            if (generateBtn) {
-                generateBtn.textContent = 'Generate Story';
-                generateBtn.disabled = false;
-            }
+            console.error('Error in generateStory:', error);
+            resultDiv.innerHTML = `
+                <div class="error">
+                    <p>An error occurred while generating your story.</p>
+                    <p><small>${error.message || error}</small></p>
+                </div>
+            `;
+            generateBtn.disabled = false;
+            generateBtn.textContent = 'Try Again';
         }
     }
     

@@ -1,12 +1,12 @@
 import path from 'path';
 import { generateStoryPrompt, generatePokemonFlightStory } from '../data/promptTemplates.js';
-import { generateStoryFromPrompt } from './llmService.js';
+import { generateStoryFromPrompt, generateStreamingStory } from './llmService.js';
 import { ALL_CATEGORIES as allCategories, ALL_ENTITIES as allEntities } from '../data/data.js';
 import { CATEGORY } from './enum.js';
 
 const DEFAULT_AGE = 8;
-const MIN_PROMPT_LENGTH = 300;
-const MAX_PROMPT_LENGTH = 500;
+const MIN_PROMPT_LENGTH = 30;
+const MAX_PROMPT_LENGTH = 50;
 
 class StoryGenerator {
     constructor() {
@@ -177,8 +177,9 @@ class StoryGenerator {
         entityIds, 
         category = 'normal', 
         age = 8,
-        forceOpenAIStory = false,
-        forceOpenAITTS = false
+        forceOpenAIStory = true,
+        forceOpenAITTS = false,
+        onChunk
     }) {
         try {
             // First get the basic prompt structure
@@ -190,13 +191,22 @@ class StoryGenerator {
                 age
             });
             
-            // Generate the story using the llmService
-            const story = await generateStoryFromPrompt(promptData.prompt, age, 0.7, 1000, forceOpenAIStory);
+           
+            // Use streaming story generation
+            const story = await generateStreamingStory(
+                promptData.prompt, 
+                age, 
+                onChunk, 
+                0.7, 
+                1000, 
+                forceOpenAIStory
+            );
+            
             // Return the enhanced result with the generated story
             return {
                 ...promptData,
                 story,
-                generated: true
+                forceOpenAITTS
             };
             
         } catch (error) {
