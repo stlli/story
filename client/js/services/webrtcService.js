@@ -6,16 +6,18 @@ class WebRTCService {
         this.onChunk = null;
         this.onStatus = null;
         this.onError = null;
-        this.ws = null;
     }
 
     // Initialize WebSocket connection
     async init() {
         return new Promise((resolve, reject) => {
-            // Use WebSocket on port 3001
+            // Use WebSocket on the same port as the HTTP server
             const wsProtocol = window.location.protocol === 'https:' ? 'wss://' : 'ws://';
             const wsHost = window.location.hostname;
-            const wsUrl = `${wsProtocol}${wsHost}:3001`;
+            const wsPort = window.location.port || (window.location.protocol === 'https:' ? 443 : 80);
+            const wsUrl = wsPort === 80 || wsPort === 443
+                ? `${wsProtocol}${wsHost}`
+                : `${wsProtocol}${wsHost}:${wsPort}`;
             
             console.log('Connecting to WebSocket:', wsUrl);
             this.ws = new WebSocket(wsUrl);

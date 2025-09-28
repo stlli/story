@@ -26,21 +26,8 @@ const app = express();
 const server = http.createServer(app);
 const port = process.env.PORT || 3000;
 
-// Create a separate HTTP server for WebSocket
-const wsServer = http.createServer();
-const wsPort = 3001; // Different port for WebSocket
+// Create HTTP server for both Express and WebSocket
 
-// WebSocket server for WebRTC signaling
-const wss = new WebSocketServer({ 
-    server: wsServer, // Use the separate server for WebSocket
-    clientTracking: true,
-    perMessageDeflate: false // Disable compression for now to rule out compression issues
-});
-
-// Start WebSocket server
-wsServer.listen(wsPort, '0.0.0.0', () => {
-    console.log(`WebSocket server is running on ws://localhost:${wsPort}`);
-});
 
 // Add CORS middleware for Express
 app.use((req, res, next) => {
@@ -51,6 +38,13 @@ app.use((req, res, next) => {
 
 // Store active connections
 const connections = new Map();
+
+// WebSocket server for WebRTC signaling (attached to the same HTTP server)
+const wss = new WebSocketServer({
+    server: server, // Use the same server as Express
+    clientTracking: true,
+    perMessageDeflate: false // Disable compression for now to rule out compression issues
+});
 
 // WebSocket connection handler
 wss.on('connection', (ws) => {
@@ -450,7 +444,13 @@ app.post('/api/generate-speech', asyncHandler(async (req, res) => {
     }
 }));
 
-// Start the server
-app.listen(port, () => {
-    console.log(`Server is running at http://localhost:${port}`);
-});
+// Start the combined server
+    server.listen(port, () => {
+        console.log(`Server is running on port ${port}`);
+        console.log(`WebSocket server is available at ws://localhost:${port}`);
+        
+        // Production logging
+        if (process.env.NODE_ENV === 'production') {
+            console.log('Server started in production mode');
+        }
+    });
