@@ -82,6 +82,43 @@ class WebRTCService {
                     this.onStatus('complete');
                 }
                 break;
+            case 'ttsChunk':
+                if (this.onChunk && message.chunk) {
+                    // Skip empty chunks
+                    if (message.chunk.length === 0) {
+                        console.log('Received empty TTS chunk, skipping');
+                        // Only complete if this is explicitly marked as final AND empty
+                        // This handles the case where server sends empty chunk as final signal
+                        if (message.isFinal && this.onStatus) {
+                            console.log('Received empty final TTS chunk, calling onStatus complete');
+                            this.onStatus('complete');
+                        }
+                        break;
+                    }
+
+                    // Process the chunk in the next tick to avoid blocking the WebSocket
+                    setTimeout(() => {
+                        try {
+                            this.onChunk(message.chunk);
+                            // If this is the final chunk, signal completion
+                            if (message.isFinal && this.onStatus) {
+                                console.log('Received final non-empty TTS chunk, calling onStatus complete');
+                                this.onStatus('complete');
+                            }
+                        } catch (error) {
+                            console.error('Error processing TTS chunk:', error);
+                            // Try to recover by re-requesting the chunk if possible
+                            if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+                                console.log('Requesting chunk retry...');
+                                this.ws.send(JSON.stringify({
+                                    type: 'retry_chunk',
+                                    chunkId: message.chunkId // Assuming server sends chunk IDs
+                                }));
+                            }
+                        }
+                    }, 0);
+                }
+                break;
                 
             case 'status':
                 this.onStatus && this.onStatus(message.message);
@@ -161,6 +198,7 @@ class WebRTCService {
         this.dataChannel.onmessage = (event) => {
             try {
                 const message = JSON.parse(event.data);
+                console.log('Data channel message:', message);
                 if (message.type === 'chunk' && this.onChunk) {
                     this.onChunk(message.data);
                 }
@@ -279,21 +317,30 @@ class WebRTCService {
         }
     }
 
-    // Close the connection
-    close() {
-        if (this.dataChannel) {
-            this.dataChannel.close();
-            this.dataChannel = null;
+    // Start generating TTS with streaming
+    async generateTTS(requestData, onChunk, onStatus, onError) {
+        this.onChunk = onChunk;
+        this.onStatus = onStatus;
+        this.onError = onError;
+
+        // Validate required parameters
+        if (!requestData || !requestData.text) {
+            onError && onError('Text is required for TTS generation');
+            return;
         }
-        
-        if (this.connection) {
-            this.connection.close();
-            this.connection = null;
-        }
-        
-        if (this.ws) {
-            this.ws.close();
-            this.ws = null;
+
+        if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+            // Prepare the TTS generation request
+            const request = {
+                type: 'generateTTS',
+                ...requestData,
+                connectionId: this.connectionId
+            };
+
+            console.log('Sending TTS generation request:', JSON.stringify(request, null, 2));
+            this.ws.send(JSON.stringify(request));
+        } else {
+            onError && onError('Not connected to server');
         }
     }
 }

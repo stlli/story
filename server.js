@@ -186,6 +186,79 @@ wss.on('connection', (ws) => {
                         message: 'Failed to generate story: ' + (error.message || 'Unknown error')
                     }));
                 }
+            } else if (data.type === 'generateTTS') {
+                // Handle TTS generation request
+                console.log('Generating TTS with data:', JSON.stringify(data, null, 2));
+                try {
+                    const { 
+                        text,
+                        voice = 'alloy',
+                        speed = 1.0
+                    } = data;
+
+                    if (!text) {
+                        throw new Error('Text is required for TTS generation');
+                    }
+
+                    // Track if we've sent any chunks
+                    let hasSentChunks = false;
+
+                    // Generate TTS with streaming
+                    await generateSpeech(text, { voice, speed }, (chunk) => {
+                        hasSentChunks = true;
+
+                        // Skip empty chunks
+                        if (!chunk || chunk.byteLength === 0) {
+                            console.log('Generated empty TTS chunk, skipping');
+                            return;
+                        }
+
+                        console.log('Generated TTS chunk of length:', chunk.byteLength);
+
+                        // Send the chunk to the client via WebSocket
+                        try {
+                            const chunkArray = new Uint8Array(chunk);
+                            const message = {
+                                type: 'ttsChunk',
+                                chunk: Array.from(chunkArray),
+                                isFinal: false
+                            };
+                            console.log('Sending TTS message:', {
+                                type: message.type,
+                                chunkLength: message.chunk.length,
+                                isFinal: message.isFinal,
+                                firstBytes: message.chunk.slice(0, 10),
+                                originalChunkType: typeof chunk,
+                                originalChunkLength: chunk.byteLength
+                            });
+                            ws.send(JSON.stringify(message));
+                            console.log('TTS message sent successfully');
+                        } catch (error) {
+                            console.error('Error sending TTS chunk:', error);
+                        }
+                    });
+
+                    // Send final chunk to indicate completion
+                    if (hasSentChunks) {
+                        console.log('Sending final TTS chunk after delay...');
+                        // Add a small delay to ensure all chunks are processed by client
+                        setTimeout(() => {
+                            ws.send(JSON.stringify({
+                                type: 'ttsChunk',
+                                chunk: [],
+                                isFinal: true
+                            }));
+                            console.log('Final TTS chunk sent');
+                        }, 100); // 100ms delay to ensure all audio chunks are processed
+                    }
+
+                } catch (error) {
+                    console.error('Error generating TTS:', error);
+                    ws.send(JSON.stringify({
+                        type: 'error',
+                        message: 'Failed to generate TTS: ' + (error.message || 'Unknown error')
+                    }));
+                }
             } else {
                 console.warn('Unknown message type:', data.type);
                 ws.send(JSON.stringify({
@@ -351,7 +424,7 @@ app.post('/api/generate-story', asyncHandler(async (req, res) => {
     res.json(result);
 }));
 
-// API endpoint to generate speech using OpenAI TTS
+// API endpoint to generate speech using OpenAI TTS (legacy, non-streaming)
 app.post('/api/generate-speech', asyncHandler(async (req, res) => {
     const { text, voice = 'alloy', speed = 1.0 } = req.body;
     

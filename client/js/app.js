@@ -715,7 +715,7 @@ document.addEventListener('DOMContentLoaded', async function() {
             
             // Get the selected topic ID if available
             const topicId = selectedTopic ? selectedTopic.id : undefined;
-            
+
             // Prepare the request data with only the essential fields
             const requestData = {
                 userPrompt: userPrompt || undefined, // Optional: only include if provided
@@ -748,17 +748,17 @@ document.addEventListener('DOMContentLoaded', async function() {
                         const formattedChunk = chunk
                             .replace(/\n/g, '<br>')
                             .replace(/\s{4,}/g, '    ');
-                        
-                        const storyContainer = resultDiv.querySelector('#story-container');
-                        const storyContent = resultDiv.querySelector('.story-content');
-                        // Update the content (using insertAdjacentHTML for better performance)
-                        if (storyContent) {
-                            storyContent.insertAdjacentHTML('beforeend', formattedChunk);
-                            // Auto-scroll to the bottom
-                            storyContainer.scrollTop = storyContainer.scrollHeight;
-                        } else {
-                            console.error('Failed to update story content: storyContent is null');
-                        }
+                            
+                            const storyContainer = resultDiv.querySelector('#story-container');
+                            const storyContent = resultDiv.querySelector('.story-content');
+                            // Update the content (using insertAdjacentHTML for better performance)
+                            if (storyContent) {
+                                storyContent.insertAdjacentHTML('beforeend', formattedChunk);
+                                // Auto-scroll to the bottom
+                                storyContainer.scrollTop = storyContainer.scrollHeight;
+                            } else {
+                                console.error('Failed to update story content: storyContent is null');
+                            }    
                     } catch (error) {
                         console.error('Error updating story content:', error);
                     }
@@ -777,101 +777,118 @@ document.addEventListener('DOMContentLoaded', async function() {
                             loadingEl.style.display = 'none';
                         }
                         
-                        // Add action buttons after generation is complete
-                        const actions = document.createElement('div');
-                        actions.className = 'action-buttons';
-                        actions.innerHTML = `
-                            <button class="tts-btn" title="Read story aloud">
-                                <svg class="tts-icon" viewBox="0 0 24 24">
-                                    <path d="M3,9H7L12,4V20L7,15H3V9M16.59,12L14,9.41L15.41,8L18,10.59L20.59,8L22,9.41L19.41,12L22,14.59L20.59,16L18,13.41L15.41,16L14,14.59L16.59,12Z" />
-                                </svg>
-                                <span class="tts-text">Read Aloud</span>
-                            </button>
-                            <button class="copy-btn" title="Copy to clipboard">
-                                <svg class="copy-icon" viewBox="0 0 24 24">
-                                    <path d="M19,21H8V7H19M19,5H8A2,2 0 0,0 6,7V21A2,2 0 0,0 8,23H19A2,2 0 0,0 21,21V7A2,2 0 0,0 19,5M16,1H4A2,2 0 0,0 2,3V17H4V3H16V1Z" />
-                                </svg>
-                                <span class="copy-text">Copy</span>
-                            </button>
-                        `;
-                        
-                        // Add event listeners for the action buttons
-                                    // Initialize TTS
-            const ttsBtn = actions.querySelector('.tts-btn');
-            const ttsText = ttsBtn.querySelector('.tts-text');
-            const promptContent = resultDiv.querySelector('.story-content').textContent;
-            
-            // Handle TTS state changes
-            const handleTTSState = (state) => {
-                console.log('TTS State:', state.state, state);
-                
-                // Skip state updates if we're in the middle of pausing
-                if (state.state === 'error' && state.data?.error === 'interrupted') {
-                    console.log('Ignoring interrupted state during pause');
-                    return;
-                }
-
-                switch (state.state) {
-                    case 'speaking':
-                        ttsText.textContent = 'Pause';
-                        ttsBtn.classList.add('speaking');
-                        break;
-                    case 'paused':
-                        ttsText.textContent = 'Resume';
-                        ttsBtn.classList.remove('speaking');
-                        break;
-                    case 'stopped':
-                    case 'ended':
-                        ttsText.textContent = 'Read Aloud';
-                        ttsBtn.classList.remove('speaking');
-                        break;
-                    case 'error':
-                        // Only show error if it's not related to pausing
-                        if (state.data?.error !== 'interrupted') {
-                            console.error('TTS Error:', state.data);
-                            ttsText.textContent = 'Read Aloud';
-                            ttsBtn.classList.remove('speaking');
-                            alert('Error reading story. Please try again.');
-                        }
-                        break;
-                }
-            };
-            
-            // Toggle TTS on button click
-            ttsBtn.addEventListener('click', () => {
-                ttsService.speak(promptContent, handleTTSState);
-            });
-
-            // Auto-start TTS if enabled in settings
-            const autoReadEnabled = localStorage.getItem('autoRead') !== 'false'; // Default to true
-            if (autoReadEnabled) {
-                // Small delay to ensure the UI is updated
-                setTimeout(() => {
-                    ttsService.speak(promptContent, handleTTSState);
-                }, 500);
-            }
-
-                        const copyBtn = actions.querySelector('.copy-btn');
-                        
-                        copyBtn.addEventListener('click', () => {
-                            navigator.clipboard.writeText(fullStory).then(() => {
-                                const copyText = copyBtn.querySelector('.copy-text');
-                                const originalText = copyText.textContent;
-                                copyText.textContent = 'Copied!';
-                                setTimeout(() => {
-                                    copyText.textContent = originalText;
-                                }, 2000);
-                            }).catch(err => {
-                                console.error('Failed to copy text: ', err);
-                            });
-                        });
-                        
-                        // Insert actions after the story content
+                        // Add action buttons after generation is complete (if not already added)
                         const storyContainer = resultDiv.querySelector('#story-container');
-                        storyContainer.appendChild(actions);
+                        if (storyContainer && !storyContainer.querySelector('.action-buttons')) {
+                            const actions = document.createElement('div');
+                            actions.className = 'action-buttons';
+                            actions.innerHTML = `
+                                <button class="tts-btn" title="Read story aloud">
+                                    <svg class="tts-icon" viewBox="0 0 24 24">
+                                        <path d="M3,9H7L12,4V20L7,15H3V9M16.59,12L14,9.41L15.41,8L18,10.59L20.59,8L22,9.41L19.41,12L22,14.59L20.59,16L18,13.41L15.41,16L14,14.59L16.59,12Z" />
+                                    </svg>
+                                    <span class="tts-text">Read Aloud</span>
+                                </button>
+                                <button class="copy-btn" title="Copy to clipboard">
+                                    <svg class="copy-icon" viewBox="0 0 24 24">
+                                        <path d="M19,21H8V7H19M19,5H8A2,2 0 0,0 6,7V21A2,2 0 0,0 8,23H19A2,2 0 0,0 21,21V7A2,2 0 0,0 19,5M16,1H4A2,2 0 0,0 2,3V17H4V3H16V1Z" />
+                                    </svg>
+                                    <span class="copy-text">Copy</span>
+                                </button>
+                            `;
+                            
+                            // Handle TTS state changes
+                            const handleTTSState = (state) => {
+                                console.log('TTS State:', state.state, state);
+                                
+                                // Skip state updates if we're in the middle of pausing
+                                if (state.state === 'error' && state.data?.error === 'interrupted') {
+                                    console.log('Ignoring interrupted state during pause');
+                                    return;
+                                }
+
+                                // Check if the TTS elements exist before trying to update them
+                                const actionsElement = document.querySelector('.action-buttons');
+                                if (!actionsElement) {
+                                    console.log('TTS elements not available yet, skipping state update');
+                                    return;
+                                }
+
+                                const ttsBtnElement = actionsElement.querySelector('.tts-btn');
+                                const ttsTextElement = ttsBtnElement?.querySelector('.tts-text');
+
+                                if (!ttsBtnElement || !ttsTextElement) {
+                                    console.log('TTS button elements not found, skipping state update');
+                                    return;
+                                }
+
+                                switch (state.state) {
+                                    case 'speaking':
+                                        ttsTextElement.textContent = 'Pause';
+                                        ttsBtnElement.classList.add('speaking');
+                                        break;
+                                    case 'paused':
+                                        ttsTextElement.textContent = 'Resume';
+                                        ttsBtnElement.classList.remove('speaking');
+                                        break;
+                                    case 'stopped':
+                                    case 'ended':
+                                        ttsTextElement.textContent = 'Read Aloud';
+                                        ttsBtnElement.classList.remove('speaking');
+                                        break;
+                                    case 'error':
+                                        // Only show error if it's not related to pausing
+                                        if (state.data?.error !== 'interrupted') {
+                                            console.error('TTS Error:', state.data);
+                                            ttsTextElement.textContent = 'Read Aloud';
+                                            ttsBtnElement.classList.remove('speaking');
+                                            console.error('Error reading story. Please try again.');
+                                        }
+                                        break;
+                                }
+                            };
+                            
+                            // Add event listeners for the action buttons
+                            const ttsBtn = actions.querySelector('.tts-btn');
+                            const copyBtn = actions.querySelector('.copy-btn');
+                            const ttsText = ttsBtn.querySelector('.tts-text');
+                            const copyText = copyBtn.querySelector('.copy-text');
+                            const promptContent = resultDiv.querySelector('.story-content').textContent;
+                            
+                            // Toggle TTS on button click
+                            ttsBtn.addEventListener('click', () => {
+                                ttsService.speak(promptContent, handleTTSState);
+                            });
+
+                            copyBtn.addEventListener('click', () => {
+                                navigator.clipboard.writeText(fullStory).then(() => {
+                                    const originalText = copyText.textContent;
+                                    copyText.textContent = 'Copied!';
+                                    setTimeout(() => {
+                                        copyText.textContent = originalText;
+                                    }, 2000);
+                                }).catch(err => {
+                                    console.error('Failed to copy text: ', err);
+                                });
+                            });
+
+                            // Auto-start TTS if enabled in settings
+                            const autoReadEnabled = localStorage.getItem('autoRead') !== 'false'; // Default to true
+                            if (autoReadEnabled) {
+                                // Small delay to ensure the UI is updated
+                                setTimeout(() => {
+                                    const handleAutoAudioChunk = (chunk) => {
+                                        console.log('Auto TTS audio chunk:', chunk.length, 'bytes');
+                                    };
+                                    ttsService.speak(fullStory, handleTTSState, handleAutoAudioChunk);
+                                }, 500);
+                            }
+                            
+                            // Insert actions after the story content
+                            storyContainer.appendChild(actions);
+                        }
                     }
                 },
-                // onError callback
                 (error) => {
                     console.error('Error generating story:', error);
                     resultDiv.innerHTML = `
@@ -884,7 +901,6 @@ document.addEventListener('DOMContentLoaded', async function() {
                     generateBtn.textContent = 'Try Again';
                 }
             );
-            
         } catch (error) {
             console.error('Error in generateStory:', error);
             resultDiv.innerHTML = `

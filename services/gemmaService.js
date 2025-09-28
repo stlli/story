@@ -19,7 +19,9 @@ let tokenizer = null;
  */
 const generateStory = async (prompt, systemMessage, maxLength = 5000) => {
     try {
-        return 'Create a fun, educational, and age-appropriate complete story specifically designed for 8-year-old children about "Imagination: Fantasy Realms and testing testing" featuring these characters:';
+        return prompt;
+        // return 'Create a fun, educational, and age-appropriate complete story';
+        // return 'Lily, an 8-year-old with a big imagination, found a shimmering gate behind the old oak tree in her backyard. Stepping through, she entered a world with blueberry-colored grass and sparkling juice rivers. A tiny, zipping creature made of golden light greeted her. “I’m Spark! Welcome to your Fantasy Realm. You made all this with your daydreams!”';
         // // Initialize generator only once
         // const generator = await pipeline('text-generation', MODEL_ID);
         
