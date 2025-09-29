@@ -8,7 +8,8 @@ import cors from 'cors';
 import { WebSocketServer } from 'ws';
 import http from 'http';
 import storyGenerator from './services/StoryGenerator.js';
-import { generateSpeech } from './services/openaiTtsService.js';
+import { generateSpeech as generateOpenAISpeech } from './services/openaiTtsService.js';
+import { generateSpeech as generateKokoroSpeech } from './services/kokoroTtsService.js';
 import { generateStreamingStory } from './services/llmService.js';
 import { fileURLToPath } from 'url';
 
@@ -418,29 +419,86 @@ app.post('/api/generate-story', asyncHandler(async (req, res) => {
     res.json(result);
 }));
 
+<<<<<<< Updated upstream
 // API endpoint to generate speech using OpenAI TTS (legacy, non-streaming)
+=======
+// API endpoint to generate speech with multiple TTS engine support
+>>>>>>> Stashed changes
 app.post('/api/generate-speech', asyncHandler(async (req, res) => {
-    const { text, voice = 'alloy', speed = 1.0 } = req.body;
+    const { text, voice = 'default', speed = 1.0, engine = 'kokoro' } = req.body;
     
     if (!text) {
         return res.status(400).json({ error: 'Text is required' });
     }
 
+    // Helper function to send error response
+    const sendError = (error, engineName) => {
+        console.error(`Error with ${engineName} TTS:`, error);
+        return res.status(500).json({ 
+            error: `Failed to generate speech with ${engineName} TTS`,
+            details: error.message
+        });
+    };
+
     try {
-        const audioBuffer = await generateSpeech(text, { voice, speed });
+        if (engine === 'kokoro') {
+            console.log('Using Kokoro TTS (gTTS)');
+            const audioBuffer = await generateKokoroSpeech(text, { 
+                speed: speed 
+            });
+            
+            res.set({
+                'Content-Type': 'audio/mp3',
+                'Transfer-Encoding': 'chunked'
+            });
+            return res.send(audioBuffer);
+            
+        } else if (engine === 'openai') {
+            console.log('Using OpenAI TTS');
+            const audioBuffer = await generateOpenAISpeech(text, { 
+                voice, 
+                speed 
+            });
+            
+            res.set({
+                'Content-Type': 'audio/mpeg',
+                'Transfer-Encoding': 'chunked'
+            });
+            return res.send(Buffer.from(audioBuffer));
+            
+        } else {
+            return res.status(400).json({ 
+                error: 'Unsupported TTS engine',
+                supportedEngines: ['kokoro', 'openai']
+            });
+        }
         
-        res.set({
-            'Content-Type': 'audio/mpeg',
-            'Transfer-Encoding': 'chunked'
-        });
-        
-        res.send(Buffer.from(audioBuffer));
     } catch (error) {
-        console.error('Error generating speech:', error);
-        res.status(500).json({ 
-            error: 'Failed to generate speech',
-            details: error.message 
-        });
+        // If the selected engine fails, try the other one as fallback
+        try {
+            const fallbackEngine = engine === 'kokoro' ? 'openai' : 'kokoro';
+            console.warn(`Falling back to ${fallbackEngine} TTS`);
+            
+            const audioBuffer = await (fallbackEngine === 'kokoro' 
+                ? generateKokoroSpeech(text, { speed })
+                : generateOpenAISpeech(text, { voice, speed }));
+                
+            res.set({
+                'Content-Type': fallbackEngine === 'kokoro' ? 'audio/mp3' : 'audio/mpeg',
+                'Transfer-Encoding': 'chunked'
+            });
+            return res.send(fallbackEngine === 'kokoro' ? audioBuffer : Buffer.from(audioBuffer));
+            
+        } catch (fallbackError) {
+            console.error('Fallback TTS also failed:', fallbackError);
+            return res.status(500).json({ 
+                error: 'Failed to generate speech with both TTS services',
+                details: {
+                    primaryError: error.message,
+                    fallbackError: fallbackError.message
+                }
+            });
+        }
     }
 }));
 
