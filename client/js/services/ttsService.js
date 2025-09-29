@@ -164,9 +164,10 @@ class TTSService {
                     }
                 }
 
-                // Schedule next processing more conservatively for mobile
+                // Schedule next processing with optimized timing
                 if (chunkQueue.length > 0) {
-                    setTimeout(processChunkQueue, chunkQueue.length > 5 ? 10 : 20); // Slower processing for mobile stability
+                    const delay = chunkQueue.length > 3 ? 8 : 12; // 12ms delay between chunks
+                    setTimeout(processChunkQueue, delay);
                 }
             };
 
@@ -339,15 +340,25 @@ class TTSService {
                 }
             };
 
-            // Monitor buffer more frequently for better responsiveness
-            bufferMonitor = setInterval(monitorBuffer, 50); // More frequent monitoring for better responsiveness
+            // Optimized buffer monitoring for mobile
+            bufferMonitor = setInterval(() => {
+                try {
+                    monitorBuffer();
+                } catch (e) {
+                    console.error('Error in buffer monitor:', e);
+                }
+            }, 30); // More frequent monitoring with error handling
 
-            // Use WebRTC for TTS streaming
+            // Initial delay to allow buffer initialization
+            await new Promise(resolve => setTimeout(resolve, 200));
+            
+            // Use WebRTC for TTS streaming with optimized chunk size
             await webrtcService.generateTTS(
                 {
                     text,
                     voice: 'alloy',
-                    speed: 1.0
+                    speed: 1.0,
+                    chunkSize: 8192 // 8KB chunks for better mobile performance
                 },
                 // onChunk callback - receives and plays audio chunks
                 async (chunkArray) => {
@@ -389,13 +400,14 @@ class TTSService {
                             // If we get a buffer error, queue the chunk and try again later
                             if (error.message && error.message.includes('buffer')) {
                                 console.log('Buffer error, queuing chunk for retry...');
-                                // For mobile devices, limit queue size to prevent memory issues
-                                if (chunkQueue.length > 10) {
+                                // Optimized queue management for mobile
+                                if (chunkQueue.length > 5) { // Reduced from 10 to 5
                                     console.warn('Chunk queue getting large, limiting size for mobile performance');
-                                    chunkQueue = chunkQueue.slice(-8); // Keep only the last 8 chunks
+                                    chunkQueue = chunkQueue.slice(-4); // Keep only the last 4 chunks
                                 }
                                 chunkQueue.push(chunk);
-                                setTimeout(processChunkQueue, 100);
+                                // Faster retry for mobile with smaller chunks
+                                setTimeout(processChunkQueue, 80);
                                 return;
                             }
                             throw error;
