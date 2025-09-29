@@ -90,6 +90,29 @@ class TTSService {
         this.onStateChange = onStateChange;
 
         if (this.useOpenAITTS) {
+            // Check for mobile devices and use simpler approach to prevent frame drops
+            const userAgent = navigator.userAgent.toLowerCase();
+            const isMobileUA = /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/i.test(userAgent);
+            const isTouchDevice = ('ontouchstart' in window || navigator.maxTouchPoints > 0);
+            const isSmallScreen = window.innerWidth <= 768;
+            const isMobile = isMobileUA || (isTouchDevice && isSmallScreen);
+
+            console.log('Mobile detection:', {
+                userAgent: userAgent,
+                isMobileUA,
+                isTouchDevice,
+                isSmallScreen,
+                detectedMobile: isMobile,
+                screenWidth: window.innerWidth,
+                touchPoints: navigator.maxTouchPoints
+            });
+
+            if (isMobile) {
+                console.log('Mobile device detected - using browser TTS to prevent frame drops');
+                this._speakWithBrowser(text);
+                return;
+            }
+
             await this._speakWithOpenAI(text);
         } else {
             this._speakWithBrowser(text);
@@ -146,8 +169,8 @@ class TTSService {
                     return;
                 }
 
-                // Process chunks more conservatively for mobile devices
-                const maxChunksToProcess = chunkQueue.length > 3 ? 2 : 1; // Reduced from 3/1 to 2/1
+                // Process chunks very conservatively for mobile devices
+                const maxChunksToProcess = 1; // Process only 1 chunk at a time, always
 
                 for (let i = 0; i < maxChunksToProcess && chunkQueue.length > 0; i++) {
                     const chunk = chunkQueue.shift();
@@ -225,8 +248,8 @@ class TTSService {
             let consecutiveLowBuffers = 0;
             
             // Dynamic buffer configuration - optimized for mobile
-            const MIN_BUFFER_THRESHOLD = 0.3;  // 300ms minimum buffer (reduced from 1.0s)
-            const MAX_BUFFER_THRESHOLD = 1.0;  // 1 second maximum buffer (reduced from 3.0s)
+            const MIN_BUFFER_THRESHOLD = 0.2;  // 200ms minimum buffer (more aggressive)
+            const MAX_BUFFER_THRESHOLD = 0.8;  // 800ms maximum buffer (reduced from 1.0s)
             const BUFFER_GROWTH_FACTOR = 1.05; // Gentler increase on underrun
             const BUFFER_SHRINK_FACTOR = 0.98; // Faster decrease when buffer is stable
             
@@ -289,8 +312,8 @@ class TTSService {
                     }
                     
                     // Pause playback if buffer is critically low - more aggressive for mobile
-                    if (bufferRemaining < 0.2 && !this.audio.paused && now - lastPauseTime > 1000) {
-                        console.log(`Pausing playback (buffer: ${bufferRemaining.toFixed(3)}s < 0.2s)`);
+                    if (bufferRemaining < 0.15 && !this.audio.paused && now - lastPauseTime > 800) {
+                        console.log(`Pausing playback (buffer: ${bufferRemaining.toFixed(3)}s < 0.15s)`);
                         this.audio.pause();
                         lastPauseTime = now;
                         
