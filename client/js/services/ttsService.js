@@ -106,8 +106,8 @@ class TTSService {
             const audioUrl = URL.createObjectURL(mediaSource);
             this.audio.src = audioUrl;
 
-            const MIN_BUFFER_TIME = 1.0; // Minimum buffer time in seconds (increased from 0.5)
-            const INITIAL_BUFFER_TIME = 0.5; // Initial buffer requirement for first playback
+            const MIN_BUFFER_TIME = 0.5; // Reduced from 1.0s for faster startup
+            const INITIAL_BUFFER_TIME = 0.3; // Reduced from 0.5s for quicker initial playback
 
             let sourceBuffer = null;
             let isBufferReady = false;
@@ -132,7 +132,7 @@ class TTSService {
                             if (sourceBuffer && sourceBuffer.buffered.length > 0) {
                                 startPlayback();
                             }
-                        }, 100);
+                        }, 50); // Reduced from 100ms for faster startup
                     }
                 } catch (error) {
                     console.error('Error creating source buffer:', error);
@@ -146,8 +146,8 @@ class TTSService {
                     return;
                 }
 
-                // Process chunks more aggressively if buffer is getting low
-                const maxChunksToProcess = chunkQueue.length > 5 ? 3 : 1; // Process more chunks at once when queue is large
+                // Process chunks more conservatively for mobile devices
+                const maxChunksToProcess = chunkQueue.length > 3 ? 2 : 1; // Reduced from 3/1 to 2/1
 
                 for (let i = 0; i < maxChunksToProcess && chunkQueue.length > 0; i++) {
                     const chunk = chunkQueue.shift();
@@ -163,9 +163,9 @@ class TTSService {
                     }
                 }
 
-                // Schedule next processing if there are more chunks
+                // Schedule next processing more conservatively for mobile
                 if (chunkQueue.length > 0) {
-                    setTimeout(processChunkQueue, chunkQueue.length > 10 ? 5 : 15); // Faster processing when queue is large
+                    setTimeout(processChunkQueue, chunkQueue.length > 5 ? 10 : 20); // Slower processing for mobile stability
                 }
             };
 
@@ -224,11 +224,11 @@ class TTSService {
             let lastBufferSize = 0;
             let consecutiveLowBuffers = 0;
             
-            // Dynamic buffer configuration
-            const MIN_BUFFER_THRESHOLD = 1.0;  // 1 second minimum buffer
-            const MAX_BUFFER_THRESHOLD = 3.0;  // 3 seconds maximum buffer
-            const BUFFER_GROWTH_FACTOR = 1.1;  // 10% increase on underrun
-            const BUFFER_SHRINK_FACTOR = 0.95; // 5% decrease when buffer is stable
+            // Dynamic buffer configuration - optimized for mobile
+            const MIN_BUFFER_THRESHOLD = 0.3;  // 300ms minimum buffer (reduced from 1.0s)
+            const MAX_BUFFER_THRESHOLD = 1.0;  // 1 second maximum buffer (reduced from 3.0s)
+            const BUFFER_GROWTH_FACTOR = 1.05; // Gentler increase on underrun
+            const BUFFER_SHRINK_FACTOR = 0.98; // Faster decrease when buffer is stable
             
             const monitorBuffer = () => {
                 if (!sourceBuffer || !isPlaying) return;
@@ -288,9 +288,9 @@ class TTSService {
                         bufferUnderrunCount = Math.min(bufferUnderrunCount + 0.5, 20); // Smoother increase
                     }
                     
-                    // Pause playback if buffer is critically low
-                    if (bufferRemaining < 0.5 && !this.audio.paused && now - lastPauseTime > 2000) {
-                        console.log(`Pausing playback (buffer: ${bufferRemaining.toFixed(3)}s < ${(bufferThreshold * 0.5).toFixed(3)}s)`);
+                    // Pause playback if buffer is critically low - more aggressive for mobile
+                    if (bufferRemaining < 0.2 && !this.audio.paused && now - lastPauseTime > 1000) {
+                        console.log(`Pausing playback (buffer: ${bufferRemaining.toFixed(3)}s < 0.2s)`);
                         this.audio.pause();
                         lastPauseTime = now;
                         
@@ -304,7 +304,7 @@ class TTSService {
                             
                             const newBufferedEnd = sourceBuffer.buffered.end(sourceBuffer.buffered.length - 1);
                             const newBufferRemaining = newBufferedEnd - this.audio.currentTime;
-                            const requiredBuffer = Math.min(bufferThreshold * 1.5, MAX_BUFFER_THRESHOLD);
+                            const requiredBuffer = Math.min(bufferThreshold * 1.2, MAX_BUFFER_THRESHOLD); // Lower resume threshold
                             
                             if (newBufferRemaining > requiredBuffer) {
                                 console.log(`Resuming playback with buffer: ${newBufferRemaining.toFixed(2)}s`);
@@ -367,21 +367,13 @@ class TTSService {
 
                         console.log('Converted to Uint8Array, length:', chunk.length, 'Queue length:', chunkQueue.length);
 
-                        if (!sourceBuffer) {
-                            console.log('Source buffer not ready, queuing chunk...');
-                            chunkQueue.push(chunk);
-                            return;
-                        }
-
-                        if (!isBufferReady) {
-                            console.log('Buffer not ready, queuing chunk...');
-                            chunkQueue.push(chunk);
-                            return;
-                        }
-
-                        // Wait for source buffer to be ready
-                        if (sourceBuffer.updating) {
-                            console.log('Source buffer is updating, queuing chunk...');
+                        if (!sourceBuffer || !isBufferReady || sourceBuffer.updating) {
+                            console.log('Source buffer not ready or updating, queuing chunk...');
+                            // For mobile devices, limit queue size to prevent memory issues
+                            if (chunkQueue.length > 10) {
+                                console.warn('Chunk queue getting large, limiting size for mobile performance');
+                                chunkQueue = chunkQueue.slice(-8); // Keep only the last 8 chunks
+                            }
                             chunkQueue.push(chunk);
                             return;
                         }
@@ -396,6 +388,11 @@ class TTSService {
                             // If we get a buffer error, queue the chunk and try again later
                             if (error.message && error.message.includes('buffer')) {
                                 console.log('Buffer error, queuing chunk for retry...');
+                                // For mobile devices, limit queue size to prevent memory issues
+                                if (chunkQueue.length > 10) {
+                                    console.warn('Chunk queue getting large, limiting size for mobile performance');
+                                    chunkQueue = chunkQueue.slice(-8); // Keep only the last 8 chunks
+                                }
                                 chunkQueue.push(chunk);
                                 setTimeout(processChunkQueue, 100);
                                 return;
@@ -422,9 +419,9 @@ class TTSService {
                             }, 150);
                         }
 
-                        // Continue processing queued chunks more aggressively
+                        // Continue processing queued chunks more conservatively for mobile
                         if (chunkQueue.length > 0) {
-                            setTimeout(processChunkQueue, chunkQueue.length > 5 ? 5 : 10); // Even faster processing when queue is large
+                            setTimeout(processChunkQueue, chunkQueue.length > 3 ? 8 : 15); // More conservative processing for mobile
                         }
 
                     } catch (error) {

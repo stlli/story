@@ -161,8 +161,8 @@ const generateSpeech = async (text, options = {}, onChunk) => {
 
             console.log('Received complete audio buffer, length:', audioArray.length);
 
-            const CHUNK_SIZE = 8192; // 8KB chunks for smoother streaming
-            const DELAY_MS = 12; // Slightly longer delay for better audio flow
+            const CHUNK_SIZE = 8192; // 8KB chunks for optimal mobile performance
+            const DELAY_MS = 12; // 12ms inter-chunk delay for smooth audio flow
 
             let chunkIndex = 0;
             // Small initial delay to let client audio buffer initialize
