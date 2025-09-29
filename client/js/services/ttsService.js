@@ -91,28 +91,6 @@ class TTSService {
 
         if (this.useOpenAITTS) {
             // Check for mobile devices and use simpler approach to prevent frame drops
-            const userAgent = navigator.userAgent.toLowerCase();
-            const isMobileUA = /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/i.test(userAgent);
-            const isTouchDevice = ('ontouchstart' in window || navigator.maxTouchPoints > 0);
-            const isSmallScreen = window.innerWidth <= 768;
-            const isMobile = isMobileUA || (isTouchDevice && isSmallScreen);
-
-            console.log('Mobile detection:', {
-                userAgent: userAgent,
-                isMobileUA,
-                isTouchDevice,
-                isSmallScreen,
-                detectedMobile: isMobile,
-                screenWidth: window.innerWidth,
-                touchPoints: navigator.maxTouchPoints
-            });
-
-            if (isMobile) {
-                console.log('Mobile device detected - using browser TTS to prevent frame drops');
-                this._speakWithBrowser(text);
-                return;
-            }
-
             await this._speakWithOpenAI(text);
         } else {
             this._speakWithBrowser(text);
@@ -509,10 +487,6 @@ class TTSService {
                     if (mediaSource.readyState === 'open') {
                         mediaSource.endOfStream('decode');
                     }
-                    // Fall back to browser TTS
-                    console.log('Falling back to browser TTS');
-                    this.useOpenAITTS = false;
-                    this._speakWithBrowser(text);
                 }
             );
 
@@ -529,8 +503,6 @@ class TTSService {
 
         } catch (error) {
             console.error('Error with OpenAI TTS, falling back to browser TTS:', error);
-            this.useOpenAITTS = false;
-            this._speakWithBrowser(text);
         }
     }
 
