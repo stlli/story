@@ -126,6 +126,7 @@ class TTSService {
         this.fullText = text;
         this.onStateChange = options.onStateChange || this.onStateChange;
 
+<<<<<<< HEAD
         try {
             // Determine which TTS engine to use
             switch (this.currentEngine) {
@@ -145,6 +146,13 @@ class TTSService {
             this.isSpeaking = false;
             this._updateState('error', { error: error.message });
             throw error;
+=======
+        if (this.useOpenAITTS) {
+            // Check for mobile devices and use simpler approach to prevent frame drops
+            await this._speakWithOpenAI(text);
+        } else {
+            this._speakWithBrowser(text);
+>>>>>>> fix/tts-service
         }
     }
 
@@ -207,6 +215,7 @@ class TTSService {
             this.isSpeaking = true;
             this.fullText = text;
             this._updateState('speaking');
+<<<<<<< HEAD
             
             const response = await fetch('/api/generate-speech', {
                 method: 'POST',
@@ -218,6 +227,45 @@ class TTSService {
                     speed: 1.0,
                     engine: 'openai'
                 })
+=======
+
+            const mediaSource = new MediaSource();
+            const audioUrl = URL.createObjectURL(mediaSource);
+            this.audio.src = audioUrl;
+
+            const MIN_BUFFER_TIME = 1.0; // Increased from 0.5s for more stable playback
+            const INITIAL_BUFFER_TIME = 3.0; // Increased from 0.3s for more initial buffering
+
+            let sourceBuffer = null;
+            let isBufferReady = false;
+            let chunkQueue = [];
+            let isPlaying = false;
+            let bufferMonitor = null;
+
+            // Handle MediaSource events
+            mediaSource.addEventListener('sourceopen', () => {
+                console.log('MediaSource opened, creating source buffer...');
+                try {
+                    sourceBuffer = mediaSource.addSourceBuffer('audio/mpeg');
+                    isBufferReady = true;
+
+                    // Process any queued chunks immediately
+                    processChunkQueue();
+
+                    // Start playing when we have the first chunk
+                    if (chunkQueue.length > 0) {
+                        // Wait a bit for chunks to be processed, then start playback
+                        setTimeout(() => {
+                            if (sourceBuffer && sourceBuffer.buffered.length > 0) {
+                                startPlayback();
+                            }
+                        }, 50); // Reduced from 100ms for faster startup
+                    }
+                } catch (error) {
+                    console.error('Error creating source buffer:', error);
+                    this._updateState('error', { error: 'Failed to create audio buffer' });
+                }
+>>>>>>> fix/tts-service
             });
 
             if (!response.ok) {
@@ -225,18 +273,117 @@ class TTSService {
                 throw new Error(`HTTP error! status: ${response.status}, ${errorText}`);
             }
 
+<<<<<<< HEAD
             const audioBlob = await response.blob();
             const audioUrl = URL.createObjectURL(audioBlob);
             
             // Play the audio
             this.audio.src = audioUrl;
             await this.audio.play();
+=======
+                // Process chunks very conservatively for mobile devices
+                const maxChunksToProcess = 1; // Process only 1 chunk at a time, always
+
+                for (let i = 0; i < maxChunksToProcess && chunkQueue.length > 0; i++) {
+                    const chunk = chunkQueue.shift();
+                    try {
+                        console.log('Processing queued chunk, size:', chunk.length);
+                        sourceBuffer.appendBuffer(chunk);
+                        break; // Process one chunk at a time to avoid blocking
+                    } catch (error) {
+                        console.error('Error appending queued chunk:', error);
+                        // Put the chunk back in the queue
+                        chunkQueue.unshift(chunk);
+                        break;
+                    }
+                }
+
+                // Schedule next processing with optimized timing
+                if (chunkQueue.length > 0) {
+                    const delay = chunkQueue.length > 3 ? 8 : 12; // 12ms delay between chunks
+                    setTimeout(processChunkQueue, delay);
+                }
+            };
+
+            // Start audio playback with buffer check
+            const startPlayback = () => {
+                if (isPlaying) return;
+
+                // Check if we have enough buffered audio
+                if (sourceBuffer && sourceBuffer.buffered.length > 0) {
+                    const buffered = sourceBuffer.buffered;
+                    const currentTime = this.audio.currentTime;
+                    const bufferedEnd = buffered.end(buffered.length - 1);
+                    const bufferRemaining = bufferedEnd - currentTime;
+
+                    console.log('Buffer check:', {
+                        bufferedEnd: bufferedEnd.toFixed(3),
+                        currentTime: currentTime.toFixed(3),
+                        bufferRemaining: bufferRemaining.toFixed(3),
+                        required: MIN_BUFFER_TIME
+                    });
+
+                    // Use INITIAL_BUFFER_TIME for the first buffer check
+                    const requiredBuffer = isPlaying ? MIN_BUFFER_TIME : INITIAL_BUFFER_TIME;
+                    if (bufferRemaining > requiredBuffer) {
+                        console.log(`Starting audio playback with ${bufferRemaining.toFixed(2)}s buffer (required: ${requiredBuffer.toFixed(2)}s)...`);
+                        this.audio.play().then(() => {
+                            isPlaying = true;
+                            console.log('Audio playback started successfully');
+                        }).catch(error => {
+                            console.error('Error starting audio playback:', error);
+                            // Try with a small delay
+                            setTimeout(() => {
+                                this.audio.play().catch(err => {
+                                    console.error('Failed to start playback after delay:', err);
+                                });
+                            }, 100);
+                        });
+                    } else {
+                        console.log('Insufficient buffer for playback, waiting...', {
+                            bufferedEnd: bufferedEnd.toFixed(3),
+                            required: MIN_BUFFER_TIME
+                        });
+                        // Try again after a short delay
+                        setTimeout(startPlayback, 50);
+                    }
+                } else {
+                    console.log('No buffered audio yet, waiting...');
+                    // Try again after a short delay
+                    setTimeout(startPlayback, 50);
+                }
+            };
+
+            // Audio buffering configuration
+            let lastBufferTime = 0;
+            let bufferUnderrunCount = 0;
+            let lastPauseTime = 0;
+            let lastBufferSize = 0;
+            let consecutiveLowBuffers = 0;
+            
+            // Dynamic buffer configuration - optimized for mobile
+            const MIN_BUFFER_THRESHOLD = 2.0;   // Increased from 0.5s to 1s
+            const MAX_BUFFER_THRESHOLD = 5.0;   // Increased from 1.5s to 3s
+            const BUFFER_GROWTH_FACTOR = 1.2;   // More aggressive growth on underrun
+            const BUFFER_SHRINK_FACTOR = 0.99;  // More conservative shrinking
+>>>>>>> fix/tts-service
             
             // Update state when audio ends
             this.audio.onended = () => {
                 this.isSpeaking = false;
                 this._updateState('ended');
             };
+
+            // Optimized buffer monitoring for mobile
+            const bufferMonitor = setInterval(() => {
+                try {
+                    if (sourceBuffer && isPlaying) {
+                        monitorBuffer();
+                    }
+                } catch (e) {
+                    console.error('Error in buffer monitor:', e);
+                }
+            }, 30); // More frequent monitoring with error handling
             
         } catch (error) {
             console.error('Error with OpenAI TTS:', error);
@@ -251,6 +398,185 @@ class TTSService {
             } else {
                 throw error;
             }
+
+            // Increased initial delay to allow more buffer to accumulate
+            await new Promise(resolve => setTimeout(resolve, 500));
+            
+            // Use WebRTC for TTS streaming with optimized chunk size
+            await webrtcService.generateTTS(
+                {
+                    text,
+                    voice: 'alloy',
+                    speed: 1.0,
+                    chunkSize: 16384 // 16KB chunks for more efficient buffering
+                },
+                // onChunk callback - receives and plays audio chunks
+                async (chunkArray) => {
+                    try {
+                        console.log('TTS Service received chunk:', {
+                            type: typeof chunkArray,
+                            length: chunkArray ? chunkArray.length : 'undefined',
+                            firstBytes: chunkArray ? chunkArray.slice(0, 10) : 'no data'
+                        });
+
+                        // Convert array back to Uint8Array
+                        const chunk = new Uint8Array(chunkArray);
+
+                        if (!chunk || chunk.length === 0) {
+                            console.log('Received empty audio chunk, skipping');
+                            return;
+                        }
+
+                        console.log('Converted to Uint8Array, length:', chunk.length, 'Queue length:', chunkQueue.length);
+
+                        if (!sourceBuffer || !isBufferReady || sourceBuffer.updating) {
+                            console.log('Source buffer not ready or updating, queuing chunk...');
+                            // For mobile devices, limit queue size to prevent memory issues
+                            if (chunkQueue.length > 10) {
+                                console.warn('Chunk queue getting large, limiting size for mobile performance');
+                                chunkQueue = chunkQueue.slice(-8); // Keep only the last 8 chunks
+                            }
+                            chunkQueue.push(chunk);
+                            return;
+                        }
+
+                        console.log('Appending chunk to source buffer, size:', chunk.length);
+                        // Append the chunk to the source buffer
+                        try {
+                            sourceBuffer.appendBuffer(chunk);
+                            console.log('Chunk appended successfully');
+                        } catch (error) {
+                            console.error('Error appending chunk to source buffer:', error);
+                            // If we get a buffer error, queue the chunk and try again later
+                            if (error.message && error.message.includes('buffer')) {
+                                console.log('Buffer error, queuing chunk for retry...');
+                                // Optimized queue management for mobile
+                                if (chunkQueue.length > 5) { // Reduced from 10 to 5
+                                    console.warn('Chunk queue getting large, limiting size for mobile performance');
+                                    chunkQueue = chunkQueue.slice(-4); // Keep only the last 4 chunks
+                                }
+                                chunkQueue.push(chunk);
+                                // Faster retry for mobile with smaller chunks
+                                setTimeout(processChunkQueue, 80);
+                                return;
+                            }
+                            throw error;
+                        }
+
+                        // Start playback if this is the first chunk and we're not playing
+                        if (!isPlaying) {
+                            // Wait a bit for the chunk to be processed, then start playback
+                            setTimeout(() => {
+                                if (!isPlaying && sourceBuffer && sourceBuffer.buffered.length > 0) {
+                                    const buffered = sourceBuffer.buffered;
+                                    const bufferedEnd = buffered.end(buffered.length - 1);
+                                    console.log('Checking playback start - Buffered:', bufferedEnd.toFixed(3), 'Required:', MIN_BUFFER_TIME);
+                                    startPlayback();
+                                } else {
+                                    console.log('Playback start conditions not met:', {
+                                        isPlaying,
+                                        hasSourceBuffer: !!sourceBuffer,
+                                        bufferedLength: sourceBuffer ? sourceBuffer.buffered.length : 0
+                                    });
+                                }
+                            }, 150);
+                        }
+
+                        // Continue processing queued chunks more conservatively for mobile
+                        if (chunkQueue.length > 0) {
+                            setTimeout(processChunkQueue, chunkQueue.length > 3 ? 8 : 15); // More conservative processing for mobile
+                        }
+
+                    } catch (error) {
+                        console.error('Error processing audio chunk:', error);
+                        this._updateState('error', { error: 'Failed to process audio chunk' });
+                    }
+                },
+                // onStatus callback
+                (status) => {
+                    if (status === 'complete') {
+                        console.log('TTS generation completed, waiting for final chunks to be processed...');
+
+                        // Wait a bit to ensure all pending chunks are processed before ending stream
+                        setTimeout(() => {
+                            // Clear buffer monitor
+                            if (bufferMonitor) {
+                                clearInterval(bufferMonitor);
+                            }
+
+                            this.isSpeaking = false;
+                            // Properly end the MediaSource stream
+                            if (mediaSource.readyState === 'open') {
+                                // Wait for any ongoing source buffer updates to complete
+                                const endStreamSafely = async () => {
+                                    try {
+                                        if (sourceBuffer && sourceBuffer.updating) {
+                                            await new Promise((resolve) => {
+                                                sourceBuffer.addEventListener('updateend', resolve, { once: true });
+                                            });
+                                        }
+                                        if (mediaSource.readyState === 'open') {
+                                            mediaSource.endOfStream();
+                                        }
+                                    } catch (error) {
+                                        console.error('Error ending MediaSource stream:', error);
+                                        if (mediaSource.readyState === 'open') {
+                                            try {
+                                                mediaSource.endOfStream('decode');
+                                            } catch (e) {
+                                                console.error('Error with decode endOfStream:', e);
+                                            }
+                                        }
+                                    }
+                                };
+                                endStreamSafely();
+                            }
+                            this._updateState('ended');
+                        }, 150); // Wait 150ms for any final chunks to be processed
+                    }
+                },
+                // onError callback
+                (error) => {
+                    console.error('TTS Error:', error);
+                    // Clear buffer monitor
+                    if (bufferMonitor) {
+                        clearInterval(bufferMonitor);
+                    }
+
+                    this.isSpeaking = false;
+                    this._updateState('error', { error: error.message || error });
+                    // End the media source stream on error
+                    if (mediaSource.readyState === 'open') {
+                        mediaSource.endOfStream('decode');
+                    }
+                }
+            );
+
+            // // Set a timeout for TTS generation (in case OpenAI API is slow)
+            // setTimeout(() => {
+            //     if (this.isSpeaking) {
+            //         console.warn('TTS generation timeout, falling back to browser TTS');
+            //         this.isSpeaking = false;
+            // Set a timeout for TTS generation (in case OpenAI API is slow)
+            const ttsTimeout = setTimeout(() => {
+                if (this.isSpeaking) {
+                    console.warn('TTS generation timeout, falling back to browser TTS');
+                    this.isSpeaking = false;
+                    this._updateState('error', { error: 'TTS generation timeout' });
+                    this.useOpenAITTS = false;
+                    this._speakWithBrowser(text);
+                }
+            }, 30000); // 30 second timeout
+
+            // Clear the timeout if TTS completes successfully
+            this.audio.onended = () => {
+                clearTimeout(ttsTimeout);
+                this.isSpeaking = false;
+                this._updateState('ended');
+            };
+
+        } catch (error) {
+            console.error('Error with OpenAI TTS, falling back to browser TTS:', error);
         }
     }
 
