@@ -107,8 +107,8 @@ class TTSService {
             const audioUrl = URL.createObjectURL(mediaSource);
             this.audio.src = audioUrl;
 
-            const MIN_BUFFER_TIME = 1.0; // Increased from 0.5s for more stable playback
-            const INITIAL_BUFFER_TIME = 3.0; // Increased from 0.3s for more initial buffering
+            const MIN_BUFFER_TIME = 10.0; // Increased from 0.5s for more stable playback
+            const INITIAL_BUFFER_TIME = 20.0; // Increased from 0.3s for more initial buffering
 
             let sourceBuffer = null;
             let isBufferReady = false;
@@ -227,20 +227,23 @@ class TTSService {
             let lastBufferSize = 0;
             let consecutiveLowBuffers = 0;
             
-            // Dynamic buffer configuration - optimized for mobile
-            const MIN_BUFFER_THRESHOLD = 2.0;   // Increased from 0.5s to 1s
-            const MAX_BUFFER_THRESHOLD = 5.0;   // Increased from 1.5s to 3s
-            const BUFFER_GROWTH_FACTOR = 1.2;   // More aggressive growth on underrun
-            const BUFFER_SHRINK_FACTOR = 0.99;  // More conservative shrinking
+            // Dynamic buffer configuration - optimized for smooth playback
+            const MIN_BUFFER_THRESHOLD = 10.0;   // Minimum buffer to maintain (2.5 seconds)
+            const MAX_BUFFER_THRESHOLD = 30.0;   // Maximum buffer to prevent excessive memory usage
+            const BUFFER_GROWTH_FACTOR = 1.3;   // Faster growth when underruns occur (30% increase)
+            const BUFFER_SHRINK_FACTOR = 0.98;  // Slower shrinkage to maintain stability (2% decrease)
+            const BUFFER_CHECK_INTERVAL = 50;   // Check buffer more frequently (50ms)
             
             const monitorBuffer = () => {
-                if (!sourceBuffer || !isPlaying) return;
+                if (!sourceBuffer || !isPlaying || !sourceBuffer.buffered.length) return;
                 
                 const buffered = sourceBuffer.buffered;
-                if (buffered.length === 0) return;
-                
                 const currentTime = this.audio.currentTime;
                 const now = Date.now();
+                
+                // Skip if we've checked too recently
+                if (now - lastBufferTime < (BUFFER_CHECK_INTERVAL / 2)) return;
+                lastBufferTime = now;
                 const bufferedEnd = buffered.end(buffered.length - 1);
                 const bufferRemaining = bufferedEnd - currentTime;
                 
