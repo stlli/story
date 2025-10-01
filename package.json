@@ -18,8 +18,16 @@
     "dotenv": "^17.2.2",
     "express": "^4.18.2",
     "openai": "^5.23.1",
+    "sharp": "^0.33.3",
     "ws": "^8.18.3"
   },
+  "resolutions": {
+    "sharp": "^0.33.3"
+  },
+  "cacheDirectories": [
+    "node_modules",
+    "node_modules/.cache/transformers"
+  ],
   "devDependencies": {
     "nodemon": "^3.0.1"
   },

@@ -1,0 +1,60 @@
+# Ignore common development and build files
+.git
+.gitignore
+node_modules/
+*.md
+*.log
+.env
+.vscode/
+
+# Ignore large media files
+*.mp3
+*.wav
+*.ogg
+*.mp4
+*.mov
+*.avi
+*.flac
+*.aac
+*.m4a
+*.wma
+*.wmv
+*.flv
+*.mkv
+*.webm
+*.m4v
+*.3gp
+*.3g2
+*.m4a
+*.m4b
+*.m4p
+*.m4r
+*.m4v
+*.3gpp
+*.3gpp2
+*.3gp2
+*.3g2
+
+# Ignore development and build artifacts
+/build
+/dist
+/coverage
+.DS_Store
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Ignore environment files
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Ignore editor directories and files
+.idea/
+.vscode/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?

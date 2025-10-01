@@ -108,7 +108,7 @@ class TTSService {
             this.audio.src = audioUrl;
 
             const MIN_BUFFER_TIME = 10.0; // Increased from 0.5s for more stable playback
-            const INITIAL_BUFFER_TIME = 20.0; // Increased from 0.3s for more initial buffering
+            const INITIAL_BUFFER_TIME = 30.0; // Increased from 0.3s for more initial buffering
 
             let sourceBuffer = null;
             let isBufferReady = false;
@@ -229,7 +229,7 @@ class TTSService {
             
             // Dynamic buffer configuration - optimized for smooth playback
             const MIN_BUFFER_THRESHOLD = 10.0;   // Minimum buffer to maintain (2.5 seconds)
-            const MAX_BUFFER_THRESHOLD = 30.0;   // Maximum buffer to prevent excessive memory usage
+            const MAX_BUFFER_THRESHOLD = 60.0;   // Maximum buffer to prevent excessive memory usage
             const BUFFER_GROWTH_FACTOR = 1.3;   // Faster growth when underruns occur (30% increase)
             const BUFFER_SHRINK_FACTOR = 0.98;  // Slower shrinkage to maintain stability (2% decrease)
             const BUFFER_CHECK_INTERVAL = 50;   // Check buffer more frequently (50ms)
