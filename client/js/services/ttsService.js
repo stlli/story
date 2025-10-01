@@ -107,8 +107,8 @@ class TTSService {
             const audioUrl = URL.createObjectURL(mediaSource);
             this.audio.src = audioUrl;
 
-            const MIN_BUFFER_TIME = 0.5; // Reduced from 1.0s for faster startup
-            const INITIAL_BUFFER_TIME = 0.3; // Reduced from 0.5s for quicker initial playback
+            const MIN_BUFFER_TIME = 1.0; // Increased from 0.5s for more stable playback
+            const INITIAL_BUFFER_TIME = 3.0; // Increased from 0.3s for more initial buffering
 
             let sourceBuffer = null;
             let isBufferReady = false;
@@ -189,9 +189,10 @@ class TTSService {
                         required: MIN_BUFFER_TIME
                     });
 
-                    // Start if we have at least some buffer (more lenient for first start)
-                    if (bufferRemaining > 0.1) { // Just 100ms buffer to start
-                        console.log('Starting audio playback with sufficient buffer...');
+                    // Use INITIAL_BUFFER_TIME for the first buffer check
+                    const requiredBuffer = isPlaying ? MIN_BUFFER_TIME : INITIAL_BUFFER_TIME;
+                    if (bufferRemaining > requiredBuffer) {
+                        console.log(`Starting audio playback with ${bufferRemaining.toFixed(2)}s buffer (required: ${requiredBuffer.toFixed(2)}s)...`);
                         this.audio.play().then(() => {
                             isPlaying = true;
                             console.log('Audio playback started successfully');
@@ -227,10 +228,10 @@ class TTSService {
             let consecutiveLowBuffers = 0;
             
             // Dynamic buffer configuration - optimized for mobile
-            const MIN_BUFFER_THRESHOLD = 0.2;  // 200ms minimum buffer (more aggressive)
-            const MAX_BUFFER_THRESHOLD = 0.8;  // 800ms maximum buffer (reduced from 1.0s)
-            const BUFFER_GROWTH_FACTOR = 1.05; // Gentler increase on underrun
-            const BUFFER_SHRINK_FACTOR = 0.98; // Faster decrease when buffer is stable
+            const MIN_BUFFER_THRESHOLD = 2.0;   // Increased from 0.5s to 1s
+            const MAX_BUFFER_THRESHOLD = 5.0;   // Increased from 1.5s to 3s
+            const BUFFER_GROWTH_FACTOR = 1.2;   // More aggressive growth on underrun
+            const BUFFER_SHRINK_FACTOR = 0.99;  // More conservative shrinking
             
             const monitorBuffer = () => {
                 if (!sourceBuffer || !isPlaying) return;
@@ -349,8 +350,8 @@ class TTSService {
                 }
             }, 30); // More frequent monitoring with error handling
 
-            // Initial delay to allow buffer initialization
-            await new Promise(resolve => setTimeout(resolve, 200));
+            // Increased initial delay to allow more buffer to accumulate
+            await new Promise(resolve => setTimeout(resolve, 500));
             
             // Use WebRTC for TTS streaming with optimized chunk size
             await webrtcService.generateTTS(
@@ -358,7 +359,7 @@ class TTSService {
                     text,
                     voice: 'alloy',
                     speed: 1.0,
-                    chunkSize: 8192 // 8KB chunks for better mobile performance
+                    chunkSize: 16384 // 16KB chunks for more efficient buffering
                 },
                 // onChunk callback - receives and plays audio chunks
                 async (chunkArray) => {
