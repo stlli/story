@@ -8,8 +8,7 @@ import cors from 'cors';
 import { WebSocketServer } from 'ws';
 import http from 'http';
 import storyGenerator from './services/StoryGenerator.js';
-import { generateSpeech as generateOpenAISpeech } from './services/openaiTtsService.js';
-import { generateSpeech as generateKokoroSpeech } from './services/kokoroTtsService.js';
+import { generateSpeech } from './services/openaiTtsService.js';
 import { generateStreamingStory } from './services/llmService.js';
 import { fileURLToPath } from 'url';
 
@@ -198,7 +197,7 @@ wss.on('connection', (ws) => {
                     // Track if we've sent any chunks
                     let hasSentChunks = false;
 
-                    // Generate TTS with streaming
+                    // Generate TTS with streaming using Kokoro
                     await generateSpeech(text, { voice, speed }, (chunk) => {
                         hasSentChunks = true;
 
@@ -419,11 +418,7 @@ app.post('/api/generate-story', asyncHandler(async (req, res) => {
     res.json(result);
 }));
 
-<<<<<<< Updated upstream
-// API endpoint to generate speech using OpenAI TTS (legacy, non-streaming)
-=======
 // API endpoint to generate speech with multiple TTS engine support
->>>>>>> Stashed changes
 app.post('/api/generate-speech', asyncHandler(async (req, res) => {
     const { text, voice = 'default', speed = 1.0, engine = 'kokoro' } = req.body;
     
