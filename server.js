@@ -46,13 +46,19 @@ const wss = new WebSocketServer({
     perMessageDeflate: false // Disable compression for now to rule out compression issues
 });
 
-// WebSocket connection handler
-wss.on('connection', (ws) => {
+// Configure WebSocket server with ping interval
+wss.on('connection', (ws, req) => {
     console.log('New WebSocket connection');
     
     // Generate a unique ID for this connection
     const connectionId = Date.now().toString();
-    const connection = { ws, id: connectionId };
+    const connection = { 
+        ws, 
+        id: connectionId,
+        isAlive: true,
+        lastActivity: Date.now()
+    };
+    
     connections.set(connectionId, connection);
     console.log(`Client connected: ${connectionId}`);
     
@@ -64,11 +70,58 @@ wss.on('connection', (ws) => {
     
     ws.send(JSON.stringify(welcomeMessage));
     
+    // Set up ping/pong for connection health
+    const pingInterval = setInterval(() => {
+        if (connection.isAlive === false) {
+            console.log(`Terminating stale connection: ${connectionId}`);
+            return ws.terminate();
+        }
+        
+        connection.isAlive = false;
+        try {
+            ws.ping(() => {});
+        } catch (e) {
+            console.error('Error sending ping:', e);
+        }
+    }, 30000); // 30 seconds
+    
+    // Handle pong responses
+    const pongHandler = () => {
+        connection.isAlive = true;
+        connection.lastActivity = Date.now();
+    };
+    
+    ws.on('pong', pongHandler);
+    
     // Handle incoming messages
     const handleMessage = async (message) => {
+        // Handle ping/pong messages
+        if (message === 'ping') {
+            ws.send('pong');
+            return;
+        }
+        if (message === 'pong') {
+            connection.isAlive = true;
+            connection.lastActivity = Date.now();
+            return;
+        }
+
         try {
-            const data = JSON.parse(message);
+            const data = typeof message === 'string' ? JSON.parse(message) : message;
+            
+            // Validate message format
+            if (!data || typeof data !== 'object') {
+                console.warn('Received invalid message format:', message);
+                return;
+            }
+            
             console.log('Received message:', data);
+            
+            // Check for required type field
+            if (!data.type) {
+                console.warn('Received message without type:', data);
+                return;
+            }
             
             // Handle different message types
             if (data.type === 'offer' || data.type === 'answer' || data.type === 'candidate') {
@@ -287,9 +340,22 @@ wss.on('connection', (ws) => {
     };
     
     // Set up event listeners
-    ws.on('message', handleMessage);
-    ws.on('close', handleClose);
-    ws.on('error', handleError);
+    ws.on('message', (message) => {
+        connection.lastActivity = Date.now();
+        handleMessage(message);
+    });
+    
+    ws.on('close', () => {
+        clearInterval(pingInterval);
+        ws.removeListener('pong', pongHandler);
+        handleClose();
+    });
+    
+    ws.on('error', (error) => {
+        clearInterval(pingInterval);
+        ws.removeListener('pong', pongHandler);
+        handleError(error);
+    });
 });
 
 // Middleware

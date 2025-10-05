@@ -2,6 +2,135 @@
 const NINJAGO_ENTITIES = [
   {
     "character": {
+      "name": "Sprigatito",
+      "species": "Grass Cat Pokémon",
+      "gender": "Male / Female",
+      "role": "Starter Pokémon",
+      "image": "/public/images/entities/Sprigatito.png",
+      "audio": "/voices/pokemon/sprigatito.mp3",
+      "physical_attributes": {
+        "defining_feature": "A distinct, leaf-shaped pattern on its face and fluffy green fur.",
+        "appearance_description": "A quadrupedal, feline Pokémon with vibrant green fur, pink inner ears, and a fluffy tail.",
+        "color_palette": {
+          "primary": "Green",
+          "secondary": "Cream",
+          "accent": "Pink"
+        }
+      },
+      "personality_traits": [
+        "Capricious",
+        "Attention-seeking",
+        "Playful",
+        "Sweet-scented",
+        "Sulky when ignored"
+      ],
+      "background": {
+        "origin_story": "A Grass-type Pokémon that can be chosen by trainers at the beginning of their journey in the Paldea region.",
+        "skills_and_abilities": [
+          "Overgrow (Ability)",
+          "Protean (Hidden Ability)",
+          "Photosynthesis",
+          "Releases a sweet, therapeutic aroma when it kneads its paws"
+        ],
+        "weaknesses": [
+          "Fire-type moves",
+          "Ice-type moves",
+          "Poison-type moves",
+          "Flying-type moves",
+          "Bug-type moves"
+        ]
+      },
+      "relationships": {
+        "allies": [
+          "Fuecoco",
+          "Quaxly",
+          "Floragato (Evolution)",
+          "Meowscarada (Final Evolution)"
+        ],
+        "rivals": [
+          "Flying-type Pokémon",
+          "Fire-type Pokémon"
+        ]
+      },
+      "story_elements": {
+        "motivation": "To bond with its trainer and grow stronger through experience and evolution.",
+        "flaws": [
+          "Gets pouty if it doesn't get enough attention.",
+          "Can be fickle and easily distracted."
+        ],
+        "cry": "A high-pitched and playful, cat-like meow."
+      }
+    }
+  },
+  {
+    "character": {
+      "name": "First Order Stormtrooper",
+      "species": "Human",
+      "gender": "Male / Female",
+      "role": "Infantry Soldier",
+      "image": "/public/images/entities/FirstOrderStormtrooper.png",
+      "audio": "/voices/starwars/first_order_stormtrooper.mp3",
+      "physical_attributes": {
+        "defining_feature": "Sleek, modernized white armor designed to evoke the legacy of the Galactic Empire.",
+        "clothing_style": "Standard-issue plastoid composite armor over a black temperature-regulating body glove.",
+        "color_palette": {
+          "primary": "White",
+          "secondary": "Black",
+          "accent": "Gray"
+        }
+      },
+      "personality_traits": [
+        "Indoctrinated",
+        "Disciplined",
+        "Ruthless",
+        "Loyal (to the First Order)",
+        "Anonymous"
+      ],
+      "background": {
+        "origin_story": "A soldier conscripted from birth and raised in a brutal training regime, stripped of individuality to become a loyal and unflinching enforcer of the First Order's dominance across the galaxy.",
+        "skills_and_abilities": [
+          "Proficiency with the F-11D blaster rifle",
+          "Squad-based combat tactics",
+          "Riot control operations",
+          "Close-quarters combat"
+        ],
+        "weaknesses": [
+          "Limited critical thinking due to intense conditioning",
+          "Vulnerable to Jedi and Force abilities",
+          "Overwhelmed by unconventional tactics",
+          "Prone to breaks in conditioning under extreme stress"
+        ]
+      },
+      "relationships": {
+        "allies": [
+          "Kylo Ren",
+          "Captain Phasma",
+          "General Hux",
+          "Supreme Leader Snoke"
+        ],
+        "rivals": [
+          "The Resistance",
+          "The New Republic",
+          "Finn (FN-2187)",
+          "Jedi"
+        ]
+      },
+      "story_elements": {
+        "motivation": "To enforce the will of the Supreme Leader and bring order to the galaxy by crushing all opposition.",
+        "flaws": [
+          "A complete lack of individuality and personal identity.",
+          "Their unwavering belief in First Order propaganda can be easily exploited."
+        ],
+        "common_utterances": [
+          "\"For the Order!\"",
+          "\"Blast them!\"",
+          "\"Traitor!\""
+        ]
+      }
+    }
+  },
+  {
+    "character": {
       "name": "Kai",
       "species": "Human",
       "gender": "Male",
