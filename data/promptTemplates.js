@@ -1,39 +1,73 @@
 /**
- * Story prompt template for generating age-appropriate stories
+ * Story prompt template for generating age-appropriate stories with character memories
  * @param {string} title - The main topic or title of the story
  * @param {string} characterDescriptions - Formatted list of characters
  * @param {string} topicName - The main topic name for educational content
  * @param {number} age - The age of the target audience
  * @param {number} minLength - Minimum length of the story
  * @param {number} maxLength - Maximum length of the story
+ * @param {Array} characterMemories - Array of previous character memories (if any)
  * @returns {string} Formatted story prompt
  */
-export function generateStoryPrompt(title, characterDescriptions, topicName, age, minLength, maxLength) {
+export function generateStoryPrompt(title, characterDescriptions, topicName, age, minLength, maxLength, characterMemories = []) {
     const ageDescription = age === 8 ? '8-year-old' : `${age}-year-old`;
 
-    return `Create a fun, educational, and age-appropriate complete story specifically designed for ${ageDescription} children about "${title}" featuring these characters:
+    // Format character memories if they exist
+    let memoryContext = '';
+    if (characterMemories && characterMemories.length > 0) {
+        memoryContext = '\n\nCharacter Memories (for reference in the story):\n' +
+            characterMemories.map(mem => `- ${mem.character}: ${mem.memory}`).join('\n') + '\n\n';
+    }
+
+    return `Create a detailed, engaging, and age-appropriate story for ${ageDescription} children about "${title}" that is EXACTLY between ${minLength}-${maxLength} words. The story must be long enough to fully develop the characters and plot. Here are the characters:
 
 Characters:
 - ${characterDescriptions}
-
-Story Guidelines (${ageDescription} audience):
-1. Keep it engaging and fun.
-2. Use age-appropriate language and concepts.
-3. Include a positive moral or lesson.
-4. Keep it between ${minLength}-${maxLength} words.
+${memoryContext}
+CRITICAL STORY REQUIREMENTS (${ageDescription} audience):
+1. WORD COUNT: The story MUST be EXACTLY between ${minLength}-${maxLength} words. This is NOT NEGOTIABLE.
+   - The story MUST be at least ${minLength} words. If it's shorter, it will be automatically rejected.
+   - The story MUST NOT exceed ${maxLength} words.
+   - To reach the required length, include:
+     * Detailed descriptions of settings and characters
+     * Dialogue between characters
+     * Character thoughts and feelings
+     * Action sequences
+     * Sensory details (sights, sounds, smells, etc.)
+   - The final word count will be verified, and any story not meeting these requirements will be rejected.
+   - If the story is too short, ADD MORE CONTENT to reach the minimum ${minLength} words.
+2. The story must be complete with a clear beginning, middle, and end.
+3. Include at least 3-5 paragraphs with proper scene setting and character development.
+4. Use age-appropriate language and concepts.
+5. Include a positive moral or lesson.
+6. Make it engaging and fun with descriptive language.
 5. Make it educational by including fun facts about ${topicName.toLowerCase()}.
-6. Ensure all content is completely child-appropriate (G-rated, no scary or mature themes).
 7. End with a happy and satisfying conclusion.
 8. Use simple sentence structures and vocabulary appropriate for ${ageDescription}s.
 9. Include some fun, age-appropriate humor.
 10. Create a story in the style of Dragon Love Taco.
 11. Give enough context for the story to be self-contained.
 
+IMPORTANT: Your response MUST be a valid JSON object with this exact structure:
+
+{
+  "story": "The complete story text with proper paragraphs and formatting.",
+  "memories": {
+    "Character1": "A 1-2 sentence memory from Character1's perspective.",
+    "Character2": "A 1-2 sentence memory from Character2's perspective."
+  }
+}
+
+Rules:
+1. Include one memory per main character
+2. Use the character's exact name as the key in the memories object
+3. Keep memories short and focused on key moments or lessons
+
 Start the story with an attention-grabbing opening and make sure to include all the characters in meaningful ways.`;
 }
 
 /**
- * Generates a Pokémon flight battle story with dynamic character integration
+{{ ... }}
  * @param {string} title - The main topic or title of the story
  * @param {string} characterDescriptions - Formatted list of characters
  * @param {string} topicName - The main topic name for educational content

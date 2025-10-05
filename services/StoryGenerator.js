@@ -5,13 +5,80 @@ import { ALL_CATEGORIES as allCategories, ALL_ENTITIES as allEntities } from '..
 import { CATEGORY } from './enum.js';
 
 const DEFAULT_AGE = 8;
-const MIN_PROMPT_LENGTH = 30;
-const MAX_PROMPT_LENGTH = 50;
+// Word count targets for story generation
+const MIN_PROMPT_LENGTH = 500;  // Minimum word count for the story
+const MAX_PROMPT_LENGTH = 800;  // Maximum word count for the story
 
 class StoryGenerator {
     constructor() {
         this.ALL_CATEGORIES = allCategories;
         this.ALL_ENTITIES = allEntities;
+        this.storyMemory = new Map(); // Store story progression by storyId
+    }
+    
+    /**
+     * Updates the story memory with new events and details
+     * @param {string} storyId - Unique identifier for the story
+     * @param {Object} storyData - Story data to store
+     * @param {string} [storyData.title] - Title of the story
+     * @param {string} [storyData.summary] - Brief summary of the story
+     * @param {Array} [storyData.characters] - Array of character objects
+     * @param {string} [storyData.setting] - Description of the story setting
+     * @param {Array} [storyData.events] - Array of story events that have occurred
+     * @param {Object} [storyData.metadata] - Additional metadata about the story
+     */
+    updateStoryMemory(storyId, storyData) {
+        if (!storyId) return;
+        
+        const currentMemory = this.storyMemory.get(storyId) || {
+            title: '',
+            summary: '',
+            characters: [],
+            setting: '',
+            events: [],
+            metadata: {},
+            lastUpdated: new Date().toISOString()
+        };
+        
+        // Update only provided fields
+        const updatedMemory = {
+            ...currentMemory,
+            ...storyData,
+            lastUpdated: new Date().toISOString()
+        };
+        
+        this.storyMemory.set(storyId, updatedMemory);
+        return updatedMemory;
+    }
+    
+    /**
+     * Adds a new event to the story's memory
+     * @param {string} storyId - Unique identifier for the story
+     * @param {string} eventType - Type of event (e.g., 'introduction', 'conflict', 'resolution')
+     * @param {string} description - Description of the event
+     * @param {Object} [details] - Additional details about the event
+     */
+    addStoryEvent(storyId, eventType, description, details = {}) {
+        const event = {
+            type: eventType,
+            description,
+            timestamp: new Date().toISOString(),
+            ...details
+        };
+        
+        const currentMemory = this.storyMemory.get(storyId) || { events: [] };
+        const updatedEvents = [...(currentMemory.events || []), event];
+        
+        return this.updateStoryMemory(storyId, { events: updatedEvents });
+    }
+    
+    /**
+     * Retrieves the current state of a story's memory
+     * @param {string} storyId - Unique identifier for the story
+     * @returns {Object} The story's memory object
+     */
+    getStoryMemory(storyId) {
+        return this.storyMemory.get(storyId) || null;
     }
     
     getRandomElements(array, count) {
@@ -149,6 +216,8 @@ class StoryGenerator {
                 MAX_PROMPT_LENGTH
             );
         }
+
+        console.log('=== GENERATED PROMPT ===', storyPrompt);
         
         return {
             story: `This is a generated ${category} story based on the topic "${storyPrompt}" and characters: ${selectedEntities.map(e => e.character.name).join(', ')}.`,
@@ -158,6 +227,54 @@ class StoryGenerator {
             characters: selectedEntities.map(e => e.character.name)
         };
     }
+
+     // Parse the JSON response from the story generation
+     parseStoryResponse(storyContent, age, category) {
+        try {
+            // First, try to find the JSON part of the response
+            const jsonStart = storyContent.indexOf('{');
+            const jsonEnd = storyContent.lastIndexOf('}') + 1;
+            
+            if (jsonStart === -1 || jsonEnd === 0) {
+                throw new Error('No JSON found in response');
+            }
+            
+            const jsonStr = storyContent.substring(jsonStart, jsonEnd);
+            const result = JSON.parse(jsonStr);
+            
+            // Log memories for debugging
+            if (result.memories && typeof result.memories === 'object') {
+                console.log('=== MEMORIES (DEBUG) ===');
+                console.log('Total memories:', Object.keys(result.memories).length);
+                Object.entries(result.memories).forEach(([character, memory], index) => {
+                    console.log(`\nMemory #${index + 1}:`);
+                    console.log(`- Character: ${character}`);
+                    console.log(`- Memory: ${memory}`);
+                });
+                console.log('========================');
+            } else {
+                console.log('No memories found in the response');
+            }
+            
+            // Return just the story content for now
+            return result;
+        } catch (error) {
+            console.error('Error parsing story response:', error);
+            // Fallback to treating the entire content as the story
+            return {
+                story: storyContent,
+                metadata: {
+                    title: 'Generated Story',
+                    age_group: age,
+                    topic: category,
+                    word_count: storyContent.split(/\s+/).length,
+                    characters: [],
+                    generatedAt: new Date().toISOString()
+                },
+                memories: []
+            };
+        }
+    };
     
     /**
      * Handles story generation with optional flags to force OpenAI usage
@@ -171,6 +288,7 @@ class StoryGenerator {
      * @param {boolean} [params.forceOpenAITTS] - Force using OpenAI for TTS
      * @returns {Promise<Object>} Generated story and metadata
      */
+
     async handleGenerateStory({ 
         userPrompt, 
         topicId, 
@@ -192,25 +310,50 @@ class StoryGenerator {
             });
             
            
-            // Use streaming story generation
-            const story = await generateStreamingStory(
+            
+            // Generate the story content with streaming support
+            const storyContent = await generateStreamingStory(
                 promptData.prompt, 
                 age, 
-                onChunk, 
+                // TODO: Use the passed onchunk to enable streaming.
+                null, // onChunk, 
                 0.7, 
                 1000, 
                 forceOpenAIStory
             );
             
-            // Return the enhanced result with the generated story
-            return {
-                ...promptData,
-                story,
-                forceOpenAITTS
-            };
+            // Parse the story content and extract story and memories
+            const parsedResponse = this.parseStoryResponse(storyContent, age, category);
             
+            // Store and log memories for debugging
+            if (parsedResponse.memories?.length > 0) {
+                console.log('=== MEMORY DEBUGGING ===');
+                console.log(`Processed ${parsedResponse.memories.length} memories`);
+                
+                parsedResponse.memories.forEach((memory, index) => {
+                    console.log(`\nMemory #${index + 1}:`);
+                    console.log(`- Character: ${memory.character}`);
+                    console.log(`- Memory: ${memory.memory}`);
+                    console.log(`- Timestamp: ${memory.timestamp}`);
+                    console.log(`- Context: ${memory.story_context}`);
+                    if (memory.character_traits?.length) {
+                        console.log(`- Traits: ${memory.character_traits.join(', ')}`);
+                    }
+                    if (memory.relationships) {
+                        console.log(`- Relationship: ${memory.relationships.with_character} (${memory.relationships.type})`);
+                    }
+                });
+                console.log('========================');
+                
+                // Here you can add code to store memories in your vector database
+                // For example: await memoryDatabase.storeMemories(parsedResponse.memories);
+            }
+            
+            // Only return the story content and basic metadata to the client
+            return parsedResponse.story;
         } catch (error) {
             console.error('Error generating story with LLM:', error);
+            
             // Fall back to the basic prompt if LLM fails
             return this.handleGeneratePrompt({
                 userPrompt,
