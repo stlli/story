@@ -11,7 +11,10 @@ class VectorDB {
         });
         this.embeddingModel = null;
         this.indexName = 'character-memories';
+        this.namespace = process.env.NODE_ENV === 'production' ? 'prod' : 'dev';
         this.initialized = false;
+        
+        console.log(`Initializing VectorDB with namespace: ${this.namespace}`);
     }
 
     async ensureInitialized() {
@@ -30,8 +33,8 @@ class VectorDB {
             );
             console.log('Vector DB initialized with embedding model');
             
-            // Initialize the Pinecone index
-            this.index = this.pinecone.Index(this.indexName);
+            // Initialize the Pinecone index with the appropriate namespace
+            this.index = this.pinecone.Index(this.indexName).namespace(this.namespace);
             
             try {
                 // Try to describe the index to check if it exists and is accessible
@@ -101,7 +104,30 @@ class VectorDB {
             // Check if we need to prune old memories first
             await this.pruneOldMemories(characterId);
             
-            // Generate embedding for the new memory
+            // Check for similar existing memories
+            const existingMemories = await this.searchSimilarMemories(characterId, memoryText, 1);
+            const SIMILARITY_THRESHOLD = 0.9; // Threshold for considering memories similar (0-1)
+            
+            if (existingMemories.length > 0 && existingMemories[0].score >= SIMILARITY_THRESHOLD) {
+                // Found a similar memory, update its strength and last accessed time instead of creating a new one
+                const existingMemory = existingMemories[0];
+                console.log(`Similar memory found (score: ${existingMemory.score.toFixed(2)}), updating existing memory`);
+                
+                const updatedStrength = Math.min(3.0, (existingMemory.strength || 1.0) + 0.1);
+                await this.index.update({
+                    id: existingMemory.id,
+                    metadata: {
+                        ...existingMemory,
+                        lastAccessed: new Date().toISOString(),
+                        strength: updatedStrength,
+                        accessCount: (existingMemory.accessCount || 0) + 1
+                    }
+                });
+                
+                return existingMemory.id;
+            }
+            
+            // No similar memory found, create a new one
             const embedding = await this.generateEmbedding(memoryText);
             const id = `memory_${Date.now()}_${characterId}`;
             const now = new Date().toISOString();
@@ -122,7 +148,7 @@ class VectorDB {
                 }
             }]);
             
-            console.log(`Stored memory for character ${characterId}`);
+            console.log(`Stored new memory for character ${characterId}`);
             return id;
         } catch (error) {
             console.error('Error storing memory:', error);

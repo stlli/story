@@ -93,7 +93,7 @@ class StoryGenerator {
 
                     // Store the memory in VectorDB
                     const memoryId = await this.vectorDB.storeMemory(
-                        `char_${characterId}`,
+                        characterId,
                         memoryText,
                         storyId,
                         {
