@@ -66,7 +66,6 @@ class WebRTCService {
                     this.handleMessage(message);
                 } catch (error) {
                     console.error('Error parsing WebSocket message:', error, 'Data:', event.data);
-                    this.onError && this.onError('Error processing server message');
                 }
             };
 
@@ -74,9 +73,11 @@ class WebRTCService {
             this.ws.onerror = (error) => {
                 console.error('WebSocket error:', error);
                 if (!this.isConnected) {
-                    const errorMsg = 'WebSocket connection error. Please check your connection and refresh the page.';
-                    this.onError && this.onError(errorMsg);
-                    reject(new Error(errorMsg));
+                    this.onError && this.onError({
+                        type: 'error',
+                        message: 'Connection error. Attempting to reconnect...',
+                        isFatal: false
+                    });
                 }
             };
             
@@ -89,7 +90,11 @@ class WebRTCService {
                 if (event.code !== 1000) { // 1000 is a normal closure
                     console.warn('WebSocket connection closed unexpectedly, attempting to reconnect...');
                     this.attemptReconnect();
-                    this.onError && this.onError('Connection lost. Reconnecting...');
+                    this.onError && this.onError({
+                        type: 'reconnecting',
+                        message: 'Connection lost. Reconnecting...',
+                        isFatal: false
+                    });
                 }
             };
         });
@@ -133,7 +138,11 @@ class WebRTCService {
     attemptReconnect() {
         if (this.reconnectAttempts >= this.maxReconnectAttempts) {
             console.error('Max reconnection attempts reached');
-            this.onError && this.onError('Unable to reconnect. Please refresh the page.');
+            this.onError && this.onError({
+                type: 'error',
+                message: 'Connection lost. Please refresh the page to continue.',
+                isFatal: true
+            });
             return;
         }
         
@@ -142,13 +151,30 @@ class WebRTCService {
         
         console.log(`Attempting to reconnect (${this.reconnectAttempts}/${this.maxReconnectAttempts}) in ${delay}ms`);
         
+        // Show reconnection status in UI
+        this.onError && this.onError({
+            type: 'reconnecting',
+            message: `Connection lost. Reconnecting (${this.reconnectAttempts}/${this.maxReconnectAttempts})...`,
+            isFatal: false
+        });
+        
         setTimeout(() => {
             if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-                return; // Already reconnected
+                // Connection restored, notify UI
+                this.onError && this.onError({
+                    type: 'reconnected',
+                    message: 'Connection restored!',
+                    isFatal: false
+                });
+                return;
             }
             
             this.init().catch(error => {
                 console.error('Reconnection failed:', error);
+                this.onError && this.onError({
+                    message: `Reconnection attempt ${this.reconnectAttempts} failed. Retrying...`,
+                    isFatal: false
+                });
                 this.attemptReconnect();
             });
         }, delay);
@@ -156,8 +182,6 @@ class WebRTCService {
 
     // Handle incoming WebSocket messages
     handleMessage(message) {
-        console.log('Received message:', message);
-        
         // Handle undefined or missing message type
         if (!message || typeof message !== 'object' || !message.type) {
             console.warn('Received invalid message format:', message);

@@ -106,24 +106,25 @@ wss.on('connection', (ws, req) => {
             return;
         }
 
+        // Try to parse the message as JSON
+        let data;
         try {
-            const data = typeof message === 'string' ? JSON.parse(message) : message;
-            
-            // Validate message format
-            if (!data || typeof data !== 'object') {
-                console.warn('Received invalid message format:', message);
-                return;
-            }
-            
-            console.log('Received message:', data);
-            
-            // Check for required type field
-            if (!data.type) {
-                console.warn('Received message without type:', data);
-                return;
-            }
-            
-            // Handle different message types
+            data = JSON.parse(message);
+        } catch (error) {
+            console.warn('Failed to parse message as JSON:', message, error);
+            return;
+        }
+
+        // Validate the parsed data
+        if (!data || typeof data !== 'object') {
+            console.warn('Received invalid message format:', data);
+            return;
+        }
+
+        console.log('Received message:', data);
+        
+        // Handle different message types
+        try {
             if (data.type === 'offer' || data.type === 'answer' || data.type === 'candidate') {
                 // Forward the message to the target peer
                 const target = connections.get(data.target);

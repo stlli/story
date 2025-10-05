@@ -129,21 +129,64 @@ document.addEventListener('DOMContentLoaded', async function() {
             console.error('Error:', error);
             const resultDiv = document.getElementById('result');
             const generateBtn = document.getElementById('generate-btn');
+            const notificationContainer = document.getElementById('notification-container') || createNotificationContainer();
             
-            if (generateBtn) {
-                generateBtn.disabled = false;
-                generateBtn.textContent = 'Generate Story';
+            // Clear previous notifications
+            notificationContainer.innerHTML = '';
+            
+            // Handle different types of errors
+            if (error.isFatal) {
+                // For fatal errors, show a persistent error message
+                const errorEl = createNotificationElement('error', error.message);
+                notificationContainer.appendChild(errorEl);
+                
+                if (generateBtn) {
+                    generateBtn.disabled = false;
+                    generateBtn.textContent = 'Try Again';
+                }
+            } else if (error.type === 'reconnecting') {
+                // Show reconnecting status
+                const reconnectingEl = createNotificationElement('info', error.message);
+                notificationContainer.appendChild(reconnectingEl);
+            } else if (error.type === 'reconnected') {
+                // Show reconnected status that auto-dismisses after 3 seconds
+                const reconnectedEl = createNotificationElement('success', error.message);
+                notificationContainer.appendChild(reconnectedEl);
+                setTimeout(() => {
+                    reconnectedEl.classList.add('fade-out');
+                    setTimeout(() => reconnectedEl.remove(), 500);
+                }, 3000);
+            } else {
+                // Handle other errors
+                const errorEl = createNotificationElement('error', error.message || 'An error occurred');
+                notificationContainer.appendChild(errorEl);
+                
+                if (generateBtn) {
+                    generateBtn.disabled = false;
+                    generateBtn.textContent = 'Generate Story';
+                }
             }
             
-            if (resultDiv) {
-                const errorEl = document.createElement('div');
-                errorEl.className = 'error-message';
-                errorEl.textContent = `Error: ${error.message || error}`;
-                resultDiv.appendChild(errorEl);
-            }
-            
-            alert(`An error occurred: ${error.message || error}`);
+            // Scroll to the notification
+            notificationContainer.scrollIntoView({ behavior: 'smooth', block: 'start' });
         };
+        
+        // Helper function to create notification container if it doesn't exist
+        function createNotificationContainer() {
+            const container = document.createElement('div');
+            container.id = 'notification-container';
+            container.className = 'notification-container';
+            document.body.insertBefore(container, document.body.firstChild);
+            return container;
+        }
+        
+        // Helper function to create notification elements
+        function createNotificationElement(type, message) {
+            const element = document.createElement('div');
+            element.className = `notification ${type}`;
+            element.textContent = message;
+            return element;
+        }
     } catch (error) {
         console.error('Failed to initialize WebRTC:', error);
         alert('Failed to initialize the connection. Please refresh the page.');
@@ -162,6 +205,7 @@ document.addEventListener('DOMContentLoaded', async function() {
         if (event.pointerType === 'pen' && event.buttons === 1) {
             // Prevent default to avoid any unwanted behavior
             event.preventDefault();
+            event.stopPropagation();
             
             // Get the speech button if it exists
             const speechBtn = document.getElementById('speech-btn');
@@ -181,7 +225,6 @@ document.addEventListener('DOMContentLoaded', async function() {
     });
     const promptInput = document.getElementById('prompt');
     const generateBtn = document.getElementById('generate-btn');
-    const resultDiv = document.getElementById('result');
     const topicSelection = document.getElementById('topic-selection');
     const entitySelection = document.getElementById('entity-selection');
     const storyCategorySelect = document.getElementById('story-category');
@@ -305,17 +348,18 @@ document.addEventListener('DOMContentLoaded', async function() {
         
         // Function to start recognition after audio has finished playing
         const startRecognitionAfterAudio = () => {
-            if (promptSound) {
-                // Wait for the audio to finish playing
-                const onEnded = () => {
-                    promptSound.removeEventListener('ended', onEnded);
-                    startRecognition();
-                };
-                promptSound.addEventListener('ended', onEnded);
-            } else {
+            // FIXME: start recognition while prompt sounds is playing.
+            // if (promptSound) {
+            //     // Wait for the audio to finish playing
+            //     const onEnded = () => {
+            //         promptSound.removeEventListener('ended', onEnded);
+            //         startRecognition();
+            //     };
+            //     promptSound.addEventListener('ended', onEnded);
+            // } else {
                 // If no sound element, start recognition immediately
                 startRecognition();
-            }
+            // }
         };
 
         // Play the prompt sound if available
