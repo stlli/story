@@ -1,3 +1,14 @@
+function formatCharacterMemories(characterMemories) {
+   if (!characterMemories || Object.keys(characterMemories).length === 0) {
+       return '';
+   }
+
+   return '\n\nCharacter Memories (for reference in the story):\n' +
+       Object.entries(characterMemories).map(([characterId, memories]) => {
+           return `- ${characterId}: ${memories}`;
+       }).join('\n') + '\n\n';
+}
+
 /**
  * Story prompt template for generating age-appropriate stories with character memories
  * @param {string} title - The main topic or title of the story
@@ -9,15 +20,11 @@
  * @param {Array} characterMemories - Array of previous character memories (if any)
  * @returns {string} Formatted story prompt
  */
-export function generateStoryPrompt(title, characterDescriptions, topicName, age, minLength, maxLength, characterMemories = []) {
+export function generateStoryPrompt(title, characterDescriptions, topicName, age, minLength, maxLength, characterMemories = {}) {
     const ageDescription = age === 8 ? '8-year-old' : `${age}-year-old`;
 
     // Format character memories if they exist
-    let memoryContext = '';
-    if (characterMemories && characterMemories.length > 0) {
-        memoryContext = '\n\nCharacter Memories (for reference in the story):\n' +
-            characterMemories.map(mem => `- ${mem.character}: ${mem.memory}`).join('\n') + '\n\n';
-    }
+    const memoryContext = formatCharacterMemories(characterMemories);
 
     return `Create a detailed, engaging, and age-appropriate story for ${ageDescription} children about "${title}" that is EXACTLY between ${minLength}-${maxLength} words. The story must be long enough to fully develop the characters and plot. Here are the characters:
 
@@ -76,7 +83,7 @@ Start the story with an attention-grabbing opening and make sure to include all 
  * @param {number} maxLength - Maximum length of the story
  * @returns {string} Formatted Pokémon flight battle story prompt
  */
-export function generatePokemonFlightStory(title, characterDescriptions, topicName, age, minLength, maxLength) {
+export function generatePokemonFlightStory(title, characterDescriptions, topicName, age, minLength, maxLength, characterMemories = {}) {
     // Ensure all parameters have valid defaults
     title = title || 'Pokémon Adventure';
     characterDescriptions = characterDescriptions || 'a brave Pokémon trainer and their Pokémon';
@@ -84,12 +91,15 @@ export function generatePokemonFlightStory(title, characterDescriptions, topicNa
     age = Number(age) || 8;
     minLength = Number(minLength) || 300;
     maxLength = Number(maxLength) || 500;
+
+    const memoryContext = formatCharacterMemories(characterMemories);
     
     const ageDescription = age === 8 ? '8-year-old' : `${age}-year-old`;
     return `Create an immersive Pokémon flight battle story for ${ageDescription} children about "${title}" featuring these Pokémon:
 
 Characters:
 - ${characterDescriptions}
+${memoryContext}
 
 Story Guidelines (${ageDescription} audience):
 1. Keep it engaging and fun for young Pokémon fans.
