@@ -7,9 +7,7 @@ node_modules/
 .env
 .vscode/
 
-# Ignore large media files
-*.mp3
-*.wav
+# Ignore large media files (except .mp3 which we need for the app)
 *.ogg
 *.mp4
 *.mov

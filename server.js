@@ -46,13 +46,19 @@ const wss = new WebSocketServer({
     perMessageDeflate: false // Disable compression for now to rule out compression issues
 });
 
-// WebSocket connection handler
-wss.on('connection', (ws) => {
+// Configure WebSocket server with ping interval
+wss.on('connection', (ws, req) => {
     console.log('New WebSocket connection');
     
     // Generate a unique ID for this connection
     const connectionId = Date.now().toString();
-    const connection = { ws, id: connectionId };
+    const connection = { 
+        ws, 
+        id: connectionId,
+        isAlive: true,
+        lastActivity: Date.now()
+    };
+    
     connections.set(connectionId, connection);
     console.log(`Client connected: ${connectionId}`);
     
@@ -64,13 +70,81 @@ wss.on('connection', (ws) => {
     
     ws.send(JSON.stringify(welcomeMessage));
     
+    // Set up ping/pong for connection health
+    const pingInterval = setInterval(() => {
+        if (connection.isAlive === false) {
+            console.log(`Terminating stale connection: ${connectionId}`);
+            return ws.terminate();
+        }
+        
+        connection.isAlive = false;
+        try {
+            ws.ping(() => {});
+        } catch (e) {
+            console.error('Error sending ping:', e);
+        }
+    }, 30000); // 30 seconds
+    
+    // Handle pong responses
+    const pongHandler = () => {
+        connection.isAlive = true;
+        connection.lastActivity = Date.now();
+    };
+    
+    ws.on('pong', pongHandler);
+    
     // Handle incoming messages
     const handleMessage = async (message) => {
+        // Handle ping/pong messages
+        if (message === 'ping') {
+            ws.send('pong');
+            return;
+        }
+        if (message === 'pong') {
+            connection.isAlive = true;
+            connection.lastActivity = Date.now();
+            return;
+        }
+
+        // For binary data, convert to string first if it's a Buffer
+        if (Buffer.isBuffer(message)) {
+            try {
+                message = message.toString('utf8');
+                // If it's a ping/pong in binary, handle it
+                if (message === 'ping') {
+                    ws.send('pong');
+                    return;
+                }
+            } catch (e) {
+                console.warn('Failed to convert binary message to string:', e);
+                return;
+            }
+        }
+
+        // Try to parse the message as JSON if it's a string
+        let data;
+        if (typeof message === 'string') {
+            try {
+                data = JSON.parse(message);
+            } catch (error) {
+                console.warn('Failed to parse message as JSON:', message, error);
+                return;
+            }
+        } else {
+            // If it's already an object, use it as is
+            data = message;
+        }
+
+        // Validate the parsed data
+        if (!data || typeof data !== 'object') {
+            console.warn('Received invalid message format:', data);
+            return;
+        }
+
+        console.log('Received message:', data);
+        
+        // Handle different message types
         try {
-            const data = JSON.parse(message);
-            console.log('Received message:', data);
-            
-            // Handle different message types
             if (data.type === 'offer' || data.type === 'answer' || data.type === 'candidate') {
                 // Forward the message to the target peer
                 const target = connections.get(data.target);
@@ -287,9 +361,22 @@ wss.on('connection', (ws) => {
     };
     
     // Set up event listeners
-    ws.on('message', handleMessage);
-    ws.on('close', handleClose);
-    ws.on('error', handleError);
+    ws.on('message', (message) => {
+        connection.lastActivity = Date.now();
+        handleMessage(message);
+    });
+    
+    ws.on('close', () => {
+        clearInterval(pingInterval);
+        ws.removeListener('pong', pongHandler);
+        handleClose();
+    });
+    
+    ws.on('error', (error) => {
+        clearInterval(pingInterval);
+        ws.removeListener('pong', pongHandler);
+        handleError(error);
+    });
 });
 
 // Middleware
