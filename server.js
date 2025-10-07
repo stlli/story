@@ -106,13 +106,33 @@ wss.on('connection', (ws, req) => {
             return;
         }
 
-        // Try to parse the message as JSON
+        // For binary data, convert to string first if it's a Buffer
+        if (Buffer.isBuffer(message)) {
+            try {
+                message = message.toString('utf8');
+                // If it's a ping/pong in binary, handle it
+                if (message === 'ping') {
+                    ws.send('pong');
+                    return;
+                }
+            } catch (e) {
+                console.warn('Failed to convert binary message to string:', e);
+                return;
+            }
+        }
+
+        // Try to parse the message as JSON if it's a string
         let data;
-        try {
-            data = JSON.parse(message);
-        } catch (error) {
-            console.warn('Failed to parse message as JSON:', message, error);
-            return;
+        if (typeof message === 'string') {
+            try {
+                data = JSON.parse(message);
+            } catch (error) {
+                console.warn('Failed to parse message as JSON:', message, error);
+                return;
+            }
+        } else {
+            // If it's already an object, use it as is
+            data = message;
         }
 
         // Validate the parsed data

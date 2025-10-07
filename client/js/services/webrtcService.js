@@ -22,6 +22,11 @@ class WebRTCService {
 
     // Initialize WebSocket connection
     async init() {
+        // Close existing connection if any
+        if (this.ws) {
+            this.ws.close();
+        }
+
         return new Promise((resolve, reject) => {
             // Use WebSocket on the same port as the HTTP server
             const wsProtocol = window.location.protocol === 'https:' ? 'wss://' : 'ws://';
@@ -44,41 +49,70 @@ class WebRTCService {
                 this.reconnectAttempts = 0;
                 this.lastMessageTime = Date.now();
                 this.setupHeartbeat();
+                
+                // Notify any listeners about successful connection
+                if (this.onStatus) {
+                    this.onStatus('connected');
+                }
+                
                 resolve();
             };
 
             this.ws.onmessage = (event) => {
                 this.lastMessageTime = Date.now();
                 
-                // Handle ping/pong messages
-                if (typeof event.data === 'string' && (event.data === 'ping' || event.data === 'pong')) {
-                    if (event.data === 'ping') {
-                        this.ws.send('pong');
-                    }
-                    return;
-                }
-                
-                // Handle JSON messages
                 try {
-                    const message = typeof event.data === 'string' 
-                        ? JSON.parse(event.data) 
-                        : event.data;
-                    this.handleMessage(message);
+                    // Handle binary data (ArrayBuffer)
+                    if (event.data instanceof ArrayBuffer) {
+                        const data = new Uint8Array(event.data);
+                        // If it's a ping message (ASCII for 'ping' is [112, 105, 110, 103])
+                        if (data.length === 4 && data[0] === 112 && data[1] === 105 && data[2] === 110 && data[3] === 103) {
+                            this.ws.send('pong');
+                            return;
+                        }
+                        // Handle other binary data if needed
+                        return;
+                    }
+                    
+                    // Handle string messages
+                    if (typeof event.data === 'string') {
+                        // Handle ping/pong messages
+                        if (event.data === 'ping') {
+                            this.ws.send('pong');
+                            return;
+                        }
+                        if (event.data === 'pong') {
+                            return; // Just update lastMessageTime
+                        }
+                        
+                        // Try to parse as JSON
+                        try {
+                            const message = JSON.parse(event.data);
+                            this.handleMessage(message);
+                        } catch (error) {
+                            console.warn('Received non-JSON message:', event.data);
+                        }
+                    }
                 } catch (error) {
-                    console.error('Error parsing WebSocket message:', error, 'Data:', event.data);
+                    console.error('Error processing WebSocket message:', error);
                 }
             };
 
             // Handle WebSocket errors
             this.ws.onerror = (error) => {
                 console.error('WebSocket error:', error);
-                if (!this.isConnected) {
-                    this.onError && this.onError({
+                this.isConnected = false;
+                
+                if (this.onError) {
+                    this.onError({
                         type: 'error',
                         message: 'Connection error. Attempting to reconnect...',
                         isFatal: false
                     });
                 }
+                
+                // Don't wait for onclose to be called, try to reconnect immediately
+                setTimeout(() => this.attemptReconnect(), 0);
             };
             
             // Handle connection close
@@ -90,11 +124,16 @@ class WebRTCService {
                 if (event.code !== 1000) { // 1000 is a normal closure
                     console.warn('WebSocket connection closed unexpectedly, attempting to reconnect...');
                     this.attemptReconnect();
-                    this.onError && this.onError({
-                        type: 'reconnecting',
-                        message: 'Connection lost. Reconnecting...',
-                        isFatal: false
-                    });
+                    
+                    if (this.onError) {
+                        this.onError({
+                            type: 'reconnecting',
+                            message: `Connection lost. Reconnecting (${this.reconnectAttempts + 1}/${this.maxReconnectAttempts})...`,
+                            isFatal: false
+                        });
+                    }
+                } else if (this.onStatus) {
+                    this.onStatus('disconnected');
                 }
             };
         });
