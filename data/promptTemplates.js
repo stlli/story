@@ -59,16 +59,24 @@ IMPORTANT: Your response MUST be a valid JSON object with this exact structure:
 
 {
   "story": "The complete story text with proper paragraphs and formatting.",
+  "summary": "A 3-4 sentence summary of the main events and lessons learned in the story.",
   "memories": {
     "Character1": "A 1-2 sentence memory from Character1's perspective.",
-    "Character2": "A 1-2 sentence memory from Character2's perspective."
+    "Character2": "A 1-2 sentence memory from Character2's perspective.",
+    "Character3": "A 1-2 sentence memory from Character3's perspective.",
+    "Character4": "A 1-2 sentence memory from Character4's perspective.",
+    "Character5": "A 1-2 sentence memory from Character5's perspective."
   }
 }
 
-Rules:
-1. Include one memory per main character
-2. Use the character's exact name as the key in the memories object
-3. Keep memories short and focused on key moments or lessons
+RULES FOR RESPONSE:
+1. The response MUST be valid JSON with all required fields
+2. Include a 3-4 sentence summary of the story
+3. Include one memory for EACH main character in the story
+4. Use each character's exact name as the key in the memories object
+5. Keep memories concise (1-2 sentences each)
+6. Focus on key moments, emotions, or lessons learned
+7. Include memories for all main characters mentioned in the story
 
 Start the story with an attention-grabbing opening and make sure to include all the characters in meaningful ways.`;
 }

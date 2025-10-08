@@ -62,9 +62,10 @@ class StoryGenerator {
      * Stores character memories in the vector database
      * @param {string} storyId - The ID of the story
      * @param {Object} memories - Object with character memories
+     * @param {string} [storySummary=''] - Optional story summary to include with memories
      * @returns {Promise<Array>} - Array of memory storage results
      */
-    async storeCharacterMemories(storyId, memories) {
+    async storeCharacterMemories(storyId, memories, storySummary = '') {
         if (!storyId || !memories || typeof memories !== 'object') {
             throw new Error('Invalid storyId or memories object');
         }
@@ -91,17 +92,23 @@ class StoryGenerator {
                         }
                     }
 
+                    // Prepend story summary to the memory if available
+                    const memoryWithContext = storySummary 
+                        ? `[Story Context: ${storySummary}]\n\n${memoryText}`
+                        : memoryText;
+
                     // Store the memory in VectorDB
                     const memoryId = await this.vectorDB.storeMemory(
                         characterId,
-                        memoryText,
+                        memoryWithContext,
                         storyId,
                         {
                             type: 'character_memory',
                             characterName,
                             characterId,
                             storyId,
-                            timestamp: new Date().toISOString()
+                            timestamp: new Date().toISOString(),
+                            hasStoryContext: !!storySummary
                         }
                     );
 
@@ -109,7 +116,8 @@ class StoryGenerator {
                         characterName, 
                         characterId,
                         memoryId, 
-                        success: true 
+                        success: true,
+                        hasStoryContext: !!storySummary
                     });
                 } catch (error) {
                     console.error(`Error storing memory for ${characterName}:`, error);
@@ -337,21 +345,33 @@ class StoryGenerator {
                 throw new Error('Invalid story content format');
             }
             
-            // Log memories for debugging
+            // Log summary and memories for debugging
+            console.log('=== STORY RESPONSE ===');
+            if (result.summary) {
+                console.log('Summary:', result.summary);
+            } else {
+                console.warn('No summary found in the response');
+                // Generate a simple summary from the story if not provided
+                const sentences = result.story.split(/[.!?]+/).filter(s => s.trim().length > 0);
+                result.summary = sentences.slice(0, 3).join('. ') + '.';
+                console.log('Generated summary:', result.summary);
+            }
+
             if (result.memories && typeof result.memories === 'object') {
-                console.log('=== MEMORIES (DEBUG) ===');
+                console.log('=== MEMORIES ===');
                 console.log('Total memories:', Object.keys(result.memories).length);
                 Object.entries(result.memories).forEach(([character, memory], index) => {
                     console.log(`\nMemory #${index + 1}:`);
                     console.log(`- Character: ${character}`);
                     console.log(`- Memory: ${memory}`);
                 });
-                console.log('========================');
             } else {
-                console.log('No memories found in the response');
+                console.warn('No memories found in the response');
+                result.memories = {}; // Ensure we have an empty object
             }
+            console.log('===================');
             
-            // Return just the story content for now
+            // Return the parsed response with story, summary, and memories
             return result;
         } catch (error) {
             console.error('Error parsing story response:', error);
@@ -542,17 +562,20 @@ class StoryGenerator {
                     });
                     console.log('========================');
 
-                    // Store memories for each character
+                    // Store memories for each character with story summary
                     const memoryResults = [];
+                    const storySummary = parsedResponse.summary || '';
+                    
                     for (const [character, memories] of Object.entries(memoriesByCharacter)) {
                         try {
                             const memoryText = memories.join(' ');
                             const results = await this.storeCharacterMemories(
                                 storyId,
-                                { [character]: memoryText }
+                                { [character]: memoryText },
+                                storySummary  // Pass the story summary to include with memories
                             );
                             memoryResults.push(...results);
-                            console.log(`Stored ${memories.length} memories for ${character}`);
+                            console.log(`Stored ${memories.length} memories for ${character} ${storySummary ? 'with story context' : ''}`);
                         } catch (error) {
                             console.error(`Failed to store memories for ${character}:`, error);
                         }
@@ -560,8 +583,12 @@ class StoryGenerator {
                 }
             }
             
-            // Only return the story content and basic metadata to the client
-            return parsedResponse.story;
+            // Return the full parsed response including story, summary, and memories
+            return {
+                ...parsedResponse,  // Includes story, summary, and memories
+                storyId,           // Add the story ID for reference
+                generatedAt: new Date().toISOString()
+            };
         } catch (error) {
             console.error('Error generating story with LLM:', error);
             
